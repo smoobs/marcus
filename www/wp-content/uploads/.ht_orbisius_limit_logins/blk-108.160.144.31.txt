@@ -1,0 +1,1 @@
+Fri, 19 Jun 2015 14:13:21 +0000: Login attempted with username: [marcusspencer], password: [n/a or not supplied]

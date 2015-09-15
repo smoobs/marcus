@@ -1,0 +1,1 @@
+Wed, 11 Feb 2015 19:08:00 +0000: Login attempted with username: [admin], password: [n/a or not supplied]

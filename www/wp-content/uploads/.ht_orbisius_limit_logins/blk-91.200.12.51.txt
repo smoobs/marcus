@@ -1,0 +1,1 @@
+Wed, 25 Feb 2015 19:02:26 +0000: Login attempted with username: [laurence-hale], password: [n/a or not supplied]
