@@ -1,0 +1,4 @@
+CREATE DATABASE /*!32312 IF NOT EXISTS*/ `marcussp_wp94`;
+GRANT USAGE ON *.* TO  "marcussp_wp54mar"@"localhost" IDENTIFIED BY "VdUzWfoP!2&" WITH MAX_QUERIES_PER_HOUR 0 MAX_CONNECTIONS_PER_HOUR 0 MAX_UPDATES_PER_HOUR 0;
+GRANT ALL PRIVILEGES ON marcussp_wp94.* TO "marcussp_wp94"@"localhost" WITH GRANT OPTION;
+flush privileges;
