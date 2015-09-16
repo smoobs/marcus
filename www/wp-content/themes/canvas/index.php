@@ -2,10 +2,8 @@
 /**
  * Index Template
  *
- * The index template is a placeholder for all cases that don't have a template file. 
- * Ideally, all fases would be handled by a more appropriate template according to the
- * current page context (for example, `tag.php` for a `post_tag` archive or `single.php`
- * for a single blog post).
+ * Here we setup all logic and XHTML that is required for the index template, used as both the homepage
+ * and as a fallback template, if a more appropriate template file doesn't exist for a specific context.
  *
  * @package WooFramework
  * @subpackage Template
@@ -14,6 +12,7 @@
  get_header();
  global $woo_options;
 ?>      
+    
     <!-- #content Starts -->
 	<?php woo_content_before(); ?>
     <div id="content" class="col-full">
@@ -22,11 +21,17 @@
 		
             <!-- #main Starts -->
             <?php woo_main_before(); ?>
-            <div id="main" class="col-left">
+            <section id="main" class="col-left">
             	
-			<?php get_template_part( 'loop', 'index' ); ?>
+			<?php
+                if ( is_home() && is_active_sidebar( 'homepage' ) ) {
+                    dynamic_sidebar( 'homepage' );
+                } else {
+                    get_template_part( 'loop', 'index' );
+                }
+            ?>
                     
-            </div><!-- /#main -->
+            </section><!-- /#main -->
             <?php woo_main_after(); ?>
     
             <?php get_sidebar(); ?>

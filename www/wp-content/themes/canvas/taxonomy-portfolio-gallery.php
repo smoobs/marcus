@@ -20,11 +20,11 @@
 
             <!-- #main Starts -->
             <?php woo_main_before(); ?>
-            <div id="main"> 
+            <section id="main"> 
 <?php
 	get_template_part( 'loop', 'portfolio' );
 ?>
-            </div><!-- /#main -->
+            </section><!-- /#main -->
             <?php woo_main_after(); ?>
     
             <?php get_sidebar(); ?>

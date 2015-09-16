@@ -15,60 +15,70 @@ global $woo_options;
 
 $post_settings = woo_portfolio_item_settings( $post->ID );
 ?>
-       
+
     <!-- #content Starts -->
 	<?php woo_content_before(); ?>
     <div id="content" class="col-full">
-    
-    	<div id="main-sidebar-container">    
+
+    	<div id="main-sidebar-container">
 
             <!-- #main Starts -->
             <?php woo_main_before(); ?>
-            <div id="main">                       
+            <section id="main">
 <?php
 	woo_loop_before();
-	
+
 	if ( have_posts() ) { $count = 0;
 		while ( have_posts() ) { the_post(); $count++;
-			
+
 			/* If we have a video embed code. */
 			if ( $post_settings['embed'] != '' ) {
 				canvas_get_embed();
 			}
-			
+
 			/* If we have a gallery and don't have a video embed code. */
 			if ( ( $post_settings['enable_gallery'] == 'true' ) && ( $post_settings['embed'] == '' ) ) {
 				locate_template( array( 'includes/gallery.php' ), true );
 			}
-			
+
 			/* If we don't have a gallery and don't have a video embed code. */
 			if ( ( $post_settings['enable_gallery'] == 'false' ) && ( $post_settings['embed'] == '' ) ) {
-				echo '<div id="post-gallery" class="portfolio-img">' . woo_image( 'return=true&key=portfolio-image&width=' . $post_settings['width'] . '&class=portfolio-img' ) . '</div><!--/#post-gallery .portfolio-img-->' . "\n";
+				echo '<div id="post-gallery" class="portfolio-img">';
+				// Display image with correct caption
+				$meta = get_post( get_post_thumbnail_id() )->post_excerpt;
+				if ( isset( $meta ) && '' != $meta ) {
+					$meta = '&meta=' . $meta;
+				} else {
+					$meta = '';
+				}
+				echo woo_image( 'noheight=true&return=true&key=portfolio-image&width=' . $post_settings['width'] . '&class=portfolio-img' . $meta );
+				echo '</div><!--/#post-gallery .portfolio-img-->' . "\n";
+
 			}
 ?>
 	<div id="post-<?php the_ID(); ?>" <?php post_class(); ?>>
-		<h2><?php the_title(); ?></h2>
+		<h2 class="entry-title"><?php the_title(); ?></h2>
 		<?php woo_post_meta(); ?>
-    	<div class="entry">	
+    	<section class="entry">
     	<?php the_content(); ?>
 		<?php
 			/* Portfolio item extras (testimonial, website button, etc). */
 			woo_portfolio_item_extras( $post_settings );
 		?>
-   		</div><!--/.entry-->
+   		</section><!--/.entry-->
    	</div><!--/#post-->
-<?php	
+<?php
 		}
 	}
-	
+
 	woo_loop_after();
-?>     
-            </div><!-- /#main -->
+?>
+            </section><!-- /#main -->
             <?php woo_main_after(); ?>
-    
+
             <?php get_sidebar(); ?>
 
-		</div><!-- /#main-sidebar-container -->         
+		</div><!-- /#main-sidebar-container -->
 
 		<?php get_sidebar( 'alt' ); ?>
 

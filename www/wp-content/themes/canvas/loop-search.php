@@ -12,8 +12,8 @@
 woo_loop_before();
 if (have_posts()) { $count = 0;
 
-	$title_before = '<span class="archive_header">';
-	$title_after = '</span>';
+	$title_before = '<h1 class="archive_header">';
+	$title_after = '</h1>';
 	
 	echo $title_before . sprintf( __( 'Search results for &quot;%s&quot;', 'woothemes' ), get_search_query() ) . $title_after;
 ?>
@@ -25,7 +25,7 @@ if (have_posts()) { $count = 0;
 	
 		if (get_option('woo_woo_tumblog_switch') == 'true') { $is_tumblog = woo_tumblog_test(); } else { $is_tumblog = false; }
 
-		woo_get_template_part( 'content', get_post_type() );
+		woo_get_template_part( 'content', 'search' );
 
 	} // End WHILE Loop
 } else {

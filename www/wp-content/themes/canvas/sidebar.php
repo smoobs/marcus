@@ -7,31 +7,38 @@
  * @package WooFramework
  * @subpackage Template
  */
-	global $woo_options;
-	
-	$layout = $woo_options['woo_layout'];
-	// Cater for custom portfolio gallery layout option.
-	if ( is_tax( 'portfolio-gallery' ) || is_post_type_archive( 'portfolio' ) ) {
-		$portfolio_gallery_layout = get_option( 'woo_portfolio_layout' );
-		
-		if ( $portfolio_gallery_layout != '' ) { $layout = $portfolio_gallery_layout; }
-	}
-	
-	if ( $layout != 'one-col' ) {
 
-		if ( woo_active_sidebar( 'primary' ) ) {
-	
-			woo_sidebar_before();
+global $post, $wp_query, $woo_options;
+
+$settings = array(
+				'portfolio_layout' => 'one-col'
+				);
+
+$settings = woo_get_dynamic_values( $settings );
+
+// Reset Main Query
+wp_reset_query();
+
+$layout = woo_get_layout();
+
+// Cater for custom portfolio gallery layout option.
+if ( is_tax( 'portfolio-gallery' ) || is_post_type_archive( 'portfolio' ) ) {
+	if ( '' != $settings['portfolio_layout'] ) { $layout = $settings['portfolio_layout']; }
+}
+
+if ( 'one-col' != $layout ) {
+	if ( woo_active_sidebar( 'primary' ) ) {
+		woo_sidebar_before();
 ?>
-<div id="sidebar">
-	<?php
-		woo_sidebar_inside_before();
-		woo_sidebar('primary');
-		woo_sidebar_inside_after();
-	?>
-</div><!-- /#sidebar -->
+<aside id="sidebar">
 <?php
-			woo_sidebar_after();
-		} // End IF Statement
-	} // End IF Statement
+	woo_sidebar_inside_before();
+	woo_sidebar( 'primary' );
+	woo_sidebar_inside_after();
+?>
+</aside><!-- /#sidebar -->
+<?php
+		woo_sidebar_after();
+	}
+}
 ?>

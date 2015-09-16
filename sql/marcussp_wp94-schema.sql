@@ -193,6 +193,7 @@ CREATE TABLE `wp_ngg_pictures` (
   `sortorder` bigint(20) NOT NULL DEFAULT '0',
   `meta_data` longtext,
   `extras_post_id` bigint(20) NOT NULL DEFAULT '0',
+  `updated_at` bigint(20) DEFAULT NULL,
   PRIMARY KEY (`pid`),
   KEY `post_id` (`post_id`),
   KEY `extras_post_id_key` (`extras_post_id`)
@@ -213,7 +214,7 @@ CREATE TABLE `wp_options` (
   `autoload` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'yes',
   PRIMARY KEY (`option_id`),
   UNIQUE KEY `option_name` (`option_name`)
-) ENGINE=MyISAM AUTO_INCREMENT=106213 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=MyISAM AUTO_INCREMENT=106227 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -700,4 +701,4 @@ CREATE TABLE `wp_wfVulnScanners` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2015-09-16 12:30:05
+-- Dump completed on 2015-09-16 12:35:25

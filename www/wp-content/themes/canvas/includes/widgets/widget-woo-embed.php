@@ -27,46 +27,46 @@ class Woo_Widget_Embed extends WP_Widget {
 	/*----------------------------------------
 	  Constructor.
 	  ----------------------------------------
-	  
+
 	  * The constructor. Sets up the widget.
 	----------------------------------------*/
-	
-	function Woo_Widget_Embed () {
-		
+
+	function __construct() {
+
 		/* Widget settings. */
 		$widget_ops = array( 'classname' => 'widget_woo_embed', 'description' => __( 'This is a WooThemes standardized embed widget. It displays the video embed codes from your posts in a tab-like fashion.', 'woothemes' ) );
 
 		/* Widget control settings. */
-		$control_ops = array( 'width' => 250, 'height' => 350, 'id_base' => 'woo_embed' );
+		$control_ops = array( 'id_base' => 'woo_embed' );
 
 		/* Create the widget. */
-		$this->WP_Widget( 'woo_embed', __('Woo - Embed/Video', 'woothemes' ), $widget_ops, $control_ops );
-		
+		parent::__construct( 'woo_embed', __('Woo - Embed/Video', 'woothemes' ), $widget_ops, $control_ops );
+
 	} // End Constructor
 
 	/*----------------------------------------
 	  widget()
 	  ----------------------------------------
-	  
+
 	  * Displays the widget on the frontend.
 	----------------------------------------*/
 
 	function widget( $args, $instance ) {
-	 
-		extract( $args ); 
-		$title = $instance['title'];
-		$limit = $instance['limit'];
-		
-		$cat_id = $instance['cat_id'];
-		$tag = $instance['tag'];
-		
-		$width = $instance['width'];
-		$height = $instance['height'];
-				
-		if(!empty($tag))
+
+		extract( $args );
+
+		$title = ! empty( $instance['title'] ) ? $instance['title'] : '';
+		$limit = ! empty( $instance['limit'] ) ? $instance['limit'] : '';
+		$width = ! empty( $instance['width'] ) ? $instance['width'] : '';
+
+		$cat_id = ! empty( $instance['cat_id'] ) ? $instance['cat_id'] : '';
+		$tag = ! empty( $instance['tag'] ) ? $instance['tag'] : '';
+
+		if( ! empty( $tag ) ) {
 			$myposts = get_posts( "numberposts=$limit&tag=$tag" );
-		else
+		} else {
 			$myposts = get_posts( "numberposts=$limit&cat=$cat_id" );
+		}
 
 		$post_list = '';
 		$count = 0;
@@ -74,21 +74,21 @@ class Woo_Widget_Embed extends WP_Widget {
 		$display = "";
 
         echo $before_widget; ?>
-       
+
         <?php
 
 			echo $before_title .$title. $after_title; ?>
 
-            <?php    
-		
+            <?php
+
 			// Add actions for plugins/themes to hook onto.
 			do_action( 'widget_woo_embed_top' );
-		
+
 			if(isset($myposts)) {
-			
+
 				foreach($myposts as $mypost) {
-					
-					$embed = woo_get_embed( 'embed',$width,$height,'widget_video',$mypost->ID);
+
+					$embed = woo_embed( 'width='.$width.'&key=embed&class=widget_video&id='.$mypost->ID);
 
 					if($embed) {
 						$count++;
@@ -97,9 +97,9 @@ class Woo_Widget_Embed extends WP_Widget {
 						<div class="widget-video-unit" <?php echo $display; ?> >
 						<?php
 							echo '<h4>' . get_the_title($mypost->ID)  . "</h4>\n";
-							
+
 							echo $embed;
-							
+
 							$post_list .= "<li class='$active'><a href='#'>" . get_the_title($mypost->ID) . "</a></li>\n";
 						?>
 						</div>
@@ -113,10 +113,10 @@ class Woo_Widget_Embed extends WP_Widget {
         </ul>
 
         <?php
-			
+
 		// Add actions for plugins/themes to hook onto.
 		do_action( 'widget_woo_embed_bottom' );
-			
+
 		echo $after_widget;
 
 	}
@@ -124,56 +124,57 @@ class Woo_Widget_Embed extends WP_Widget {
 	/*----------------------------------------
 	  update()
 	  ----------------------------------------
-	
+
 	* Function to update the settings from
 	* the form() function.
-	
+
 	* Params:
 	* - Array $new_instance
 	* - Array $old_instance
 	----------------------------------------*/
-	
-	function update ( $new_instance, $old_instance ) {
-		
-		$instance = $old_instance;
 
-		/* Strip tags for title and name to remove HTML (important for text inputs). */
-		$instance['title'] = strip_tags( $new_instance['title'] );
-		$instance['limit'] = intval( $new_instance['limit'] );
-		$instance['cat_id'] = esc_attr( $new_instance['cat_id'] );
-		$instance['tag'] = esc_attr( $new_instance['tag'] );
-		$instance['width'] = intval( $new_instance['width'] );
-		$instance['height'] = intval( $new_instance['height'] );
-		
-		return $instance;
-		
+	function update ( $new_instance, $old_instance ) {
+		$settings = array();
+
+		foreach ( array( 'title', 'tag' ) as $setting ) {
+			if ( isset( $new_instance[$setting] ) ) {
+				$settings[$setting] = sanitize_text_field( $new_instance[$setting] );
+			}
+		}
+
+		foreach ( array( 'limit', 'cat_id', 'width' ) as $setting ) {
+			if ( isset( $new_instance[$setting] ) ) {
+				$settings[$setting] = absint( $new_instance[$setting] );
+			}
+		}
+
+		return $settings;
 	} // End update()
 
    /*----------------------------------------
 	 form()
 	 ----------------------------------------
-	  
+
 	  * The form on the widget control in the
 	  * widget administration area.
-	  
-	  * Make use of the get_field_id() and 
+
+	  * Make use of the get_field_id() and
 	  * get_field_name() function when creating
 	  * your form elements. This handles the confusing stuff.
-	  
+
 	  * Params:
 	  * - Array $instance
 	----------------------------------------*/
 
-   function form( $instance ) {       
-   
+   function form( $instance ) {
+
        /* Set up some default widget settings. */
 		$defaults = array(
-						'title' => __( 'Recent Videos', 'woothemes' ), 
-						'limit' => 10, 
-						'cat_id' => '', 
-						'tag' => '', 
-						'width' => 220, 
-						'height' => 300
+						'title' => __( 'Recent Videos', 'woothemes' ),
+						'limit' => 10,
+						'cat_id' => '',
+						'width' => 300,
+						'tag' => ''
 					);
 
 		$instance = wp_parse_args( (array) $instance, $defaults );
@@ -190,7 +191,7 @@ class Woo_Widget_Embed extends WP_Widget {
 	       <select name="<?php echo $this->get_field_name( 'cat_id' ); ?>" class="widefat" id="<?php echo $this->get_field_id( 'cat_id' ); ?>">
            <option value="">Disabled</option>
 			<?php
-			
+
            	foreach ($cats as $cat){
            	?><option value="<?php echo $cat->cat_ID; ?>" <?php selected( $cat->cat_ID, $instance['cat_id'] ); ?>><?php echo $cat->cat_name . ' ( ' . $cat->category_count . ')'; ?></option><?php
            	}
@@ -202,32 +203,30 @@ class Woo_Widget_Embed extends WP_Widget {
             <label for="<?php echo $this->get_field_id( 'tag' ); ?>">Or <?php _e( 'Tag:', 'woothemes' ); ?></label>
             <input type="text" name="<?php echo $this->get_field_name( 'tag' ); ?>" value="<?php echo $instance['tag']; ?>" class="widefat" id="<?php echo $this->get_field_id( 'tag' ); ?>" />
         </p>
-		<!-- Widget Size: Text Inputs -->
-         <p>
-            <label for="<?php echo $this->get_field_id( 'width' ); ?>"><?php _e( 'Size:', 'woothemes' ); ?></label>
-            <input type="text" size="2" name="<?php echo $this->get_field_name( 'width' ); ?>" value="<?php echo $instance['width']; ?>" class="" id="<?php echo $this->get_field_id( 'width' ); ?>" /> W
-            <input type="text" size="2" name="<?php echo $this->get_field_name( 'height' ); ?>" value="<?php echo $instance['height']; ?>" class="" id="<?php echo $this->get_field_id( 'height' ); ?>" /> H
-
-        </p>
         <!-- Widget Limit: Text Input -->
          <p>
             <label for="<?php echo $this->get_field_id( 'limit' ); ?>"><?php _e( 'Limit (optional):', 'woothemes' ); ?></label>
             <input type="text" name="<?php echo $this->get_field_name( 'limit' ); ?>" value="<?php echo $instance['limit']; ?>" class="" id="<?php echo $this->get_field_id( 'limit' ); ?>" />
         </p>
 
+		<p>
+			<label for="<?php echo $this->get_field_id('width'); ?>"><?php _e('Width:','woothemes'); ?></label>
+			<input type="text" size="2" name="<?php echo $this->get_field_name('width'); ?>" value="<?php echo $instance['width']; ?>" class="" id="<?php echo $this->get_field_id('width'); ?>" />
+		</p>
+
 <?php
 	} // End form()
-	
+
 } // End Class
 
 /*----------------------------------------
   Register the widget on `widgets_init`.
   ----------------------------------------
-  
+
   * Registers this widget.
 ----------------------------------------*/
 
-add_action( 'widgets_init', create_function( '', 'return register_widget("Woo_Widget_Embed");' ), 1 ); 
+add_action( 'widgets_init', create_function( '', 'return register_widget("Woo_Widget_Embed");' ), 1 );
 ?>
 <?php
 if(is_active_widget( null,null,'woo_embed' ) == true) {

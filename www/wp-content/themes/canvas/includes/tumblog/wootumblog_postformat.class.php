@@ -344,7 +344,7 @@ class WooTumblogPostFormat {
             <select class="" name="post_format_names" id="post_format_names">
             	<option value="0"><?php _e( 'View all Tumblogs', 'woothemes' ); ?></option>
             	<?php foreach ($post_formats as $post_format_item) { $nice_tax_name = str_replace('post-format-', '', $post_format_item->name); ?>
-            	<option value="<?php echo $post_format_item->term_id; ?>" <?php if ($category_ID == $post_format_item->term_id) { echo 'selected="selected"'; } ?>><?php _e(ucwords($nice_tax_name)); ?></option>
+            	<option value="<?php echo $post_format_item->term_id; ?>" <?php if ($category_ID == $post_format_item->term_id) { echo 'selected="selected"'; } ?>><?php echo ucwords( $nice_tax_name ); ?></option>
             	<?php } ?>
             </select>
             <input type="submit" name="submit" value="<?php _e( 'Filter', 'woothemes' ); ?>" class="button" />

@@ -21,13 +21,13 @@ get_header();
 
             <!-- #main Starts -->
             <?php woo_main_before(); ?>
-            <div id="main" class="col-left">
+            <section id="main" class="col-left">
 <?php
 	woo_loop_before();
 		woo_get_template_part( 'content', '404' ); // Get the 404 content template file, contextually.
 	woo_loop_after();
 ?>
-            </div><!-- /#main -->
+            </section><!-- /#main -->
             <?php woo_main_after(); ?>
     
             <?php get_sidebar(); ?>

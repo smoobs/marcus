@@ -1,4 +1,8 @@
 <?php
+// File Security Check
+if ( ! defined( 'ABSPATH' ) ) exit;
+?>
+<?php
 /*-----------------------------------------------------------------------------------
 
 TABLE OF CONTENTS
@@ -6,6 +10,7 @@ TABLE OF CONTENTS
 - woo_image - Get Image from custom field
     - vt_resize - Resize post thumbnail
     - woo_get_youtube_video_image - Get thumbnail from YouTube
+- Add default filters to woo_embed()
 - woo_get_embed - Get Video
 - Woo Show Page Menu
 - Get the style path currently selected
@@ -31,6 +36,8 @@ TABLE OF CONTENTS
 - Buy Themes page
 - Detects the Charset of String and Converts it to UTF-8
 - WP Login logo
+- WP Login logo URL
+- WP Login logo title
 - woo_pagination()
 - woo_breadcrumbs()
 -- woo_breadcrumbs_get_parents()
@@ -40,14 +47,24 @@ TABLE OF CONTENTS
 -- Enhancements to the WordPress Admin Bar
 - woo_prepare_category_ids_from_option()
 - Move tracking code from footer to header.
-- Timthumb Update Page and Functions
-	- woothemes_timthumb_update_page
-	- woo_check_if_thumbs_are_equal
-	- woo_thumb_new_contents
 - woo_get_dynamic_values()
 - woo_get_posts_by_taxonomy()
 - If the user has specified a "posts page", load the "Blog" page template there
 - PressTrends API Integration
+- WooDojo Download Banner
+- wooframework_add_woodojo_banner()
+- wooframework_ajax_banner_close()
+- WooSEO Deprecation Banner
+- wooframework_add_wooseo_banner()
+- WooSidebars Deprecation Banner
+- wooframework_add_woosbm_banner()
+- Static Front Page Detection Banner
+- wooframework_get_theme_version_data()
+- wooframework_display_theme_version_data()
+- wooframework_load_google_fonts()
+- woo_remove_timthumb_menu()
+- woothemes_remove_timthumb_page()
+- woo_process_old_custom_fields()
 -----------------------------------------------------------------------------------*/
 
 /*-----------------------------------------------------------------------------------*/
@@ -127,27 +144,31 @@ function woo_image($args) {
 	$attachment_id = array();
 	$attachment_src = array();
 
-	if ( !is_array($args) )
+	if ( ! is_array( $args ) )
 		parse_str( $args, $args );
 
-	extract($args);
+	extract( $args );
 
     // Set post ID
-    if ( empty($id) ) {
+    if ( empty( $id ) ) {
 		$id = $post->ID;
     }
 
-	$thumb_id = get_post_meta($id,'_thumbnail_id',true);
+	$thumb_id = esc_html( get_post_meta( $id, '_thumbnail_id', true ) );
 
 	// Set alignment
-	if ( $alignment == '')
-		$alignment = get_post_meta($id, '_image_alignment', true);
+	if ( $alignment == '' )
+		$alignment = esc_html( get_post_meta( $id, '_image_alignment', true ) );
 
 	// Get standard sizes
-	if ( !$width && !$height ) {
+	if ( ! $width && ! $height ) {
 		$width = '100';
 		$height = '100';
 	}
+
+	// Cast $width and $height to integer
+	$width = intval( $width );
+	$height = intval( $height );
 
 	/* ------------------------------------------------------------------------- */
 	/* FIND IMAGE TO USE */
@@ -155,21 +176,26 @@ function woo_image($args) {
 
 	// When a custom image is sent through
 	if ( $src != '' ) {
-		$custom_field = $src;
+		$custom_field = esc_url( $src );
 		$link = 'img';
 
 	// WP 2.9 Post Thumbnail support
-	} elseif ( get_option( 'woo_post_image_support') == 'true' AND !empty($thumb_id) ) {
+	} elseif ( get_option( 'woo_post_image_support' ) == 'true' && ! empty( $thumb_id ) ) {
 
-		if ( get_option( 'woo_pis_resize') == "true") {
+		if ( get_option( 'woo_pis_resize' ) == 'true' ) {
+
+			if ( 0 == $height ) {
+				$img_data = wp_get_attachment_image_src( $thumb_id, array( intval( $width ), 9999 ) );
+				$height = $img_data[2];
+			}
 
 			// Dynamically resize the post thumbnail
 			$vt_crop = get_option( 'woo_pis_hard_crop' );
-			if ($vt_crop == "true") $vt_crop = true; else $vt_crop = false;
+			if ($vt_crop == 'true' ) $vt_crop = true; else $vt_crop = false;
 			$vt_image = vt_resize( $thumb_id, '', $width, $height, $vt_crop );
 
 			// Set fields for output
-			$custom_field = $vt_image['url'];
+			$custom_field = esc_url( $vt_image['url'] );
 			$width = $vt_image['width'];
 			$height = $vt_image['height'];
 
@@ -178,18 +204,18 @@ function woo_image($args) {
 			if ( $size )
 				$thumb_size = $size;
 			else
-				$thumb_size = array($width,$height);
+				$thumb_size = array( $width, $height );
 
-			$img_link = get_the_post_thumbnail($id,$thumb_size,array( 'class' => 'woo-image ' . $class));
+			$img_link = get_the_post_thumbnail( $id, $thumb_size, array( 'class' => 'woo-image ' . esc_attr( $class ) ) );
 		}
 
 	// Grab the image from custom field
 	} else {
-    	$custom_field = get_post_meta($id, $key, true);
+    	$custom_field = esc_url( get_post_meta( $id, $key, true ) );
 	}
 
 	// Automatic Image Thumbs - get first image from post attachment
-	if ( empty($custom_field) && get_option( 'woo_auto_img') == 'true' && empty($img_link) && !(is_singular() AND in_the_loop() AND $link == "src") ) {
+	if ( empty( $custom_field ) && get_option( 'woo_auto_img' ) == 'true' && empty( $img_link ) && ! ( is_singular() && in_the_loop() && $link == 'src' ) ) {
 
         if( $offset >= 1 )
 			$repeat = $repeat + $offset;
@@ -203,34 +229,28 @@ function woo_image($args) {
 											);
 
 		// Search for and get the post attachment
-		if ( !empty($attachments) ) {
-
+		if ( ! empty( $attachments ) ) {
 			$counter = -1;
-			$size = 'large';
 			foreach ( $attachments as $att_id => $attachment ) {
 				$counter++;
 				if ( $counter < $offset )
 					continue;
 
-				if ( get_option( 'woo_post_image_support' ) == "true" AND get_option( 'woo_pis_resize') == "true" ) {
-
+				if ( get_option( 'woo_post_image_support' ) == 'true' && get_option( 'woo_pis_resize' ) == 'true' ) {
 					// Dynamically resize the post thumbnail
 					$vt_crop = get_option( 'woo_pis_hard_crop' );
-					if ($vt_crop == "true") $vt_crop = true; else $vt_crop = false;
+					if ( $vt_crop == 'true' ) $vt_crop = true; else $vt_crop = false;
 					$vt_image = vt_resize( $att_id, '', $width, $height, $vt_crop );
 
 					// Set fields for output
-					$custom_field = $vt_image['url'];
+					$custom_field = esc_url( $vt_image['url'] );
 					$width = $vt_image['width'];
 					$height = $vt_image['height'];
-
 				} else {
-
-					$src = wp_get_attachment_image_src($att_id, $size, true);
-					$custom_field = $src[0];
+					$src = wp_get_attachment_image_src( $att_id, 'large', true );
+					$custom_field = esc_url( $src[0] );
 					$attachment_id[] = $att_id;
 					$src_arr[] = $custom_field;
-
 				}
 				$thumb_id = $att_id;
 				$is_auto_image = true;
@@ -240,19 +260,19 @@ function woo_image($args) {
 		} else {
 
 			$first_img = '';
-			$post = get_post($id);
+			$post = get_post( $id );
 			ob_start();
 			ob_end_clean();
-			$output = preg_match_all( '/<img.+src=[\'"]([^\'"]+)[\'"].*>/i', $post->post_content, $matches);
+			$output = preg_match_all( '/<img.+src=[\'"]([^\'"]+)[\'"].*>/i', $post->post_content, $matches );
 			if ( !empty($matches[1][0]) ) {
 
 				// Save Image URL
-				$custom_field = $matches[1][0];
+				$custom_field = esc_url( $matches[1][0] );
 
 				// Search for ALT tag
-				$output = preg_match_all( '/<img.+alt=[\'"]([^\'"]+)[\'"].*>/i', $post->post_content, $matches);
+				$output = preg_match_all( '/<img.+alt=[\'"]([^\'"]+)[\'"].*>/i', $post->post_content, $matches );
 				if ( !empty($matches[1][0]) ) {
-					$alt = $matches[1][0];
+					$alt = esc_attr( $matches[1][0] );
 				}
 			}
 
@@ -261,42 +281,39 @@ function woo_image($args) {
 	}
 
 	// Check if there is YouTube embed
-	if ( empty($custom_field) && empty($img_link) ) {
-		$embed = get_post_meta($id, "embed", true);
+	if ( empty( $custom_field ) && empty( $img_link ) ) {
+		$embed = esc_html( get_post_meta( $id, 'embed', true ) );
 		if ( $embed )
-	    	$custom_field = woo_get_video_image($embed);
+	    	$custom_field = esc_url( woo_get_video_image( $embed ) );
 	}
 
 	// Return if there is no attachment or custom field set
-	if ( empty($custom_field) && empty($img_link) ) {
+	if ( empty( $custom_field ) && empty( $img_link ) ) {
 
 		// Check if default placeholder image is uploaded
-		$placeholder = get_option( 'framework_woo_default_image' );
-		if ( $placeholder && !(is_singular() AND in_the_loop()) ) {
-			$custom_field = $placeholder;
+		// $placeholder = get_option( 'framework_woo_default_image' );
+		$placeholder = WF()->get_placeholder_image_url();
+		if ( $placeholder && !(is_singular() && in_the_loop()) ) {
+			$custom_field = esc_url( $placeholder );
 
 			// Resize the placeholder if
-			if ( get_option( 'woo_post_image_support' ) == "true" AND get_option( 'woo_pis_resize') == "true") {
-
+			if ( get_option( 'woo_post_image_support' ) == 'true' && get_option( 'woo_pis_resize' ) == 'true' ) {
 				// Dynamically resize the post thumbnail
 				$vt_crop = get_option( 'woo_pis_hard_crop' );
-				if ($vt_crop == "true") $vt_crop = true; else $vt_crop = false;
+				if ($vt_crop == 'true' ) $vt_crop = true; else $vt_crop = false;
 				$vt_image = vt_resize( '', $placeholder, $width, $height, $vt_crop );
 
 				// Set fields for output
-				$custom_field = $vt_image['url'];
+				$custom_field = esc_url( $vt_image['url'] );
 				$width = $vt_image['width'];
 				$height = $vt_image['height'];
-
 			}
-
 		} else {
 	       return;
 	    }
-
 	}
 
-	if(empty($src_arr) && empty($img_link)){ $src_arr[] = $custom_field; }
+	if(empty( $src_arr ) && empty( $img_link ) ) { $src_arr[] = $custom_field; }
 
 	/* ------------------------------------------------------------------------- */
 	/* BEGIN OUTPUT */
@@ -305,138 +322,62 @@ function woo_image($args) {
     $output = '';
 
     // Set output height and width
-    $set_width = ' width="' . $width .'" ';
+    $set_width = ' width="' . esc_attr( $width ) . '" ';
     $set_height = '';
-    if ( !$noheight )
-    	$set_height = ' height="' . $height .'" ';
+
+    if ( ! $noheight && 0 < $height )
+    	$set_height = ' height="' . esc_attr( $height ) . '" ';
 
 	// Set standard class
-	if ( $class ) $class = 'woo-image ' . $class; else $class = 'woo-image';
+	if ( $class ) $class = 'woo-image ' . esc_attr( $class ); else $class = 'woo-image';
 
 	// Do check to verify if images are smaller then specified.
 	if($force == true){ $set_width = ''; $set_height = ''; }
 
 	// WP Post Thumbnail
-	if(!empty($img_link) ){
+	if( ! empty( $img_link ) ) {
 
 		if( $link == 'img' ) {  // Output the image without anchors
-			$output .= $before;
+			$output .= wp_kses_post( $before );
 			$output .= $img_link;
-			$output .= $after;
-
+			$output .= wp_kses_post( $after );
 		} elseif( $link == 'url' ) {  // Output the large image
-
-			$src = wp_get_attachment_image_src($thumb_id, 'large', true);
-			$custom_field = $src[0];
+			$src = wp_get_attachment_image_src( $thumb_id, 'large', true );
+			$custom_field = esc_url( $src[0] );
 			$output .= $custom_field;
-
 		} else {  // Default - output with link
-
-			if ( ( is_single() OR is_page() ) AND $single == false ) {
+			if ( ( is_single() || is_page() ) && $single == false ) {
 				$rel = 'rel="lightbox"';
 				$href = false;
 			} else {
-				$href = get_permalink($id);
+				$href = get_permalink( $id );
 				$rel = '';
 			}
 
-			$title = 'title="' . get_the_title($id) .'"';
+			$title = 'title="' . esc_attr( get_the_title( $id ) ) .'"';
 
-			$output .= $before;
+			$output .= wp_kses_post( $before );
 			if($href == false){
 				$output .= $img_link;
 			} else {
-				$output .= '<a '.$title.' href="' . $href .'" '.$rel.'>' . $img_link . '</a>';
+				$output .= '<a ' . $title . ' href="' . esc_url( $href ) . '" '. $rel .'>' . $img_link . '</a>';
 			}
 
-			$output .= $after;
+			$output .= wp_kses_post( $after );
 		}
 	}
 
-	// Use thumb.php to resize. Skip if image has been natively resized with vt_resize.
-	elseif ( get_option( 'woo_resize') == 'true' && empty($vt_image['url']) ) {
+	// Use thumb.php to resize. Skip if image has been natively resized with vt_resize. Make sure thumb.php exists on purpose in a child theme.
+	elseif ( get_option( 'woo_timthumb_retired', 'false' ) == 'false' && get_option( 'woo_resize') == 'true' && empty( $vt_image['url'] )/* && file_exists( get_stylesheet_directory_uri() . '/thumb.php' )*/ ) {
 
-		foreach($src_arr as $key => $custom_field){
-
-			// Clean the image URL
-			$href = $custom_field;
-			$custom_field = cleanSource( $custom_field );
-
-			// Check if WPMU and set correct path AND that image isn't external
-			if ( function_exists( 'get_current_site') && strpos($custom_field,"http://") !== 0 ) {
-				get_current_site();
-				//global $blog_id; Breaks with WP3 MS
-				if ( !$blog_id ) {
-					global $current_blog;
-					$blog_id = $current_blog->blog_id;
-				}
-				if ( isset($blog_id) && $blog_id > 0 ) {
-					$imageParts = explode( 'files/', $custom_field );
-					if ( isset($imageParts[1]) )
-						$custom_field = '/blogs.dir/' . $blog_id . '/files/' . $imageParts[1];
-				}
-			}
-
-			//Set the ID to the Attachment's ID if it is an attachment
-			if($is_auto_image == true){
-				$quick_id = $attachment_id[$key];
-			} else {
-			 	$quick_id = $id;
-			}
-
-			//Set custom meta
-			if ($meta) {
-				$alt = $meta;
-				$title = 'title="'. $meta .'"';
-			} else {
-				if ($alt == '' AND get_post_meta($thumb_id, '_wp_attachment_image_alt', true) )
-					$alt = get_post_meta($thumb_id, '_wp_attachment_image_alt', true);
-				else
-					$alt = get_the_title($quick_id);
-				$title = 'title="'. get_the_title($quick_id) .'"';
-			}
-
-			// Set alignment parameter
-			if ($alignment <> '')
-				$alignment = '&amp;a='.$alignment;
-
-			$img_link = '<img src="'. get_template_directory_uri(). '/functions/thumb.php?src='. $custom_field .'&amp;w='. $width .'&amp;h='. $height .'&amp;zc=1&amp;q='. $quality . $alignment . '" alt="'.$alt.'" class="'. stripslashes($class) .'" '. $set_width . $set_height . ' />';
-
-			if( $link == 'img' ) {  // Just output the image
-				$output .= $before;
-				$output .= $img_link;
-				$output .= $after;
-
-			} elseif( $link == 'url' ) {  // Output the image without anchors
-
-				if($is_auto_image == true){
-					$src = wp_get_attachment_image_src($thumb_id, 'large', true);
-					$custom_field = $src[0];
-				}
-				$output .= $href;
-
-			} else {  // Default - output with link
-
-				if ( ( is_single() OR is_page() ) AND $single == false ) {
-					$rel = 'rel="lightbox"';
-				} else {
-					$href = get_permalink($id);
-					$rel = '';
-				}
-
-				$output .= $before;
-				$output .= '<a '.$title.' href="' . $href .'" '.$rel.'>' . $img_link . '</a>';
-				$output .= $after;
-			}
-		}
+		$output .= timthumb_deprecated( array( 'output' => $output, 'src_arr' => $src_arr, 'attachment_id' => $attachment_id, 'id' => $id, 'meta' => $meta, 'alt' => $alt, 'thumb_id' => $thumb_id, 'alignment' => $alignment, 'width' => $width, 'height' => $height, 'quality' => $quality, 'class' => $class, 'set_width' => $set_width, 'set_height' => $set_height, 'before' => $before, 'after' => $after, 'link' => $link, 'is_auto_image' => $is_auto_image, 'single' => $single ) );
 
 	// No dynamic resizing
 	} else {
-
-		foreach($src_arr as $key => $custom_field){
+		foreach( $src_arr as $key => $custom_field ) {
 
 			//Set the ID to the Attachment's ID if it is an attachment
-			if($is_auto_image == true AND isset($attachment_id[$key])){
+			if( $is_auto_image == true && isset( $attachment_id[$key] ) ){
 				$quick_id = $attachment_id[$key];
 			} else {
 			 	$quick_id = $id;
@@ -444,50 +385,62 @@ function woo_image($args) {
 
 			//Set custom meta
 			if ($meta) {
-				$alt = $meta;
-				$title = 'title="'. $meta .'"';
+				$alt = esc_attr( $meta );
+				$title = 'title="'. esc_attr( $meta ) .'"';
 			} else {
-				if ($alt == '') $alt = get_post_meta($thumb_id, '_wp_attachment_image_alt', true);
-				$title = 'title="'. get_the_title($quick_id) .'"';
+				if ( empty( $alt ) ) $alt = esc_attr( get_post_meta( $thumb_id, '_wp_attachment_image_alt', true ) );
+				$title = 'title="'. esc_attr( get_the_title( $quick_id ) ) .'"';
 			}
 
-			$img_link =  '<img src="'. $custom_field .'" alt="'. $alt .'" '. $set_width . $set_height . ' class="'. stripslashes($class) .'" />';
+			if ( empty( $alt ) ) {
+			    $alt = esc_attr( get_post( $thumb_id )->post_excerpt ); // If not, Use the Caption
+			}
+
+			if ( empty( $alt ) ) {
+			    $alt = esc_attr( get_post( $thumb_id )->post_title ); // Finally, use the title
+			}
+
+			$img_link =  '<img src="'. esc_url( $custom_field ) . '" alt="' . esc_attr( $alt ) . '" ' . $set_width . $set_height . $title . ' class="' . esc_attr( stripslashes( $class ) ) . '" />';
 
 			if ( $link == 'img' ) {  // Just output the image
-				$output .= $before;
+				$output .= wp_kses_post( $before );
 				$output .= $img_link;
-				$output .= $after;
+				$output .= wp_kses_post( $after );
 
 			} elseif( $link == 'url' ) {  // Output the URL to original image
 				if ( $vt_image['url'] || $is_auto_image ) {
-					$src = wp_get_attachment_image_src($thumb_id, 'full', true);
-					$custom_field = $src[0];
+					$src = wp_get_attachment_image_src( $thumb_id, 'full', true );
+					$custom_field = esc_url( $src[0] );
 				}
 				$output .= $custom_field;
 
 			} else {  // Default - output with link
 
-				if ( ( is_single() OR is_page() ) AND $single == false ) {
+				if ( ( is_single() || is_page() ) && $single == false ) {
 
 					// Link to the large image if single post
 					if ( $vt_image['url'] || $is_auto_image ) {
-						$src = wp_get_attachment_image_src($thumb_id, 'full', true);
-						$custom_field = $src[0];
+						$src = wp_get_attachment_image_src( $thumb_id, 'full', true );
+						$custom_field = esc_url( $src[0] );
 					}
 
 					$href = $custom_field;
 					$rel = 'rel="lightbox"';
 				} else {
-					$href = get_permalink($id);
+					$href = get_permalink( $id );
 					$rel = '';
 				}
 
-				$output .= $before;
-				$output .= '<a href="' . $href .'" '. $rel . $title .'>' . $img_link . '</a>';
-				$output .= $after;
+				$output .= wp_kses_post( $before );
+				$output .= '<a href="' . esc_url( $href ) . '" ' . $rel . ' ' . $title . '>' . $img_link . '</a>';
+				$output .= wp_kses_post( $after );
 			}
 		}
 	}
+
+	// Remove no height attribute - IE fix when no height is set
+	$output = str_replace( 'height=""', '', $output );
+	$output = str_replace( 'height="0"', '', $output );
 
 	// Return or echo the output
 	if ( $return == TRUE )
@@ -499,30 +452,32 @@ function woo_image($args) {
 }
 
 /* Get thumbnail from Video Embed code */
+if ( ! function_exists( 'woo_get_video_image' ) ) {
+function woo_get_video_image( $embed ) {
+	$video_thumb = '';
 
-if (!function_exists( 'woo_get_video_image')) {
-	function woo_get_video_image($embed) {
-	
-		$video_thumb = '';
+	// YouTube - get the video code if this is an embed code (old embed)
+	preg_match( '/youtube\.com\/v\/([\w\-]+)/', $embed, $match );
 
-		// YouTube - get the video code if this is an embed code (old embed)
-		preg_match( '/youtube\.com\/v\/([\w\-]+)/', $embed, $match);
+	// YouTube - if old embed returned an empty ID, try capuring the ID from the new iframe embed
+	if( ! isset( $match[1] ) )
+		preg_match( '/youtube\.com\/embed\/([\w\-]+)/', $embed, $match );
 
-		// YouTube - if old embed returned an empty ID, try capuring the ID from the new iframe embed
-		if( !isset($match[1]) )
-			preg_match( '/youtube\.com\/embed\/([\w\-]+)/', $embed, $match);
+	// YouTube - if it is not an embed code, get the video code from the youtube URL
+	if( ! isset( $match[1] ) )
+		preg_match( '/v\=(.+)&/', $embed, $match );
 
-		// YouTube - if it is not an embed code, get the video code from the youtube URL
-		if( !isset($match[1]) )
-			preg_match( '/v\=(.+)&/',$embed ,$match);
+	// YouTube - get the corresponding thumbnail images
+	if( isset( $match[1] ) )
+		$video_thumb = "http://img.youtube.com/vi/" . urlencode( $match[1] ) . "/0.jpg";
 
-		// YouTube - get the corresponding thumbnail images
-		if( isset($match[1]) )
-			$video_thumb = "http://img.youtube.com/vi/".$match[1]."/0.jpg";
-
-		// return whichever thumbnail image you would like to retrieve
-		return $video_thumb;
+	if ( is_ssl() ) {
+		$video_thumb = str_replace( 'http://', 'https://', $video_thumb );
 	}
+
+	// return whichever thumbnail image you would like to retrieve
+	return $video_thumb;
+} // End woo_get_video_image()
 }
 
 
@@ -550,19 +505,20 @@ if (!function_exists( 'woo_get_video_image')) {
  * @param bool $crop
  * @return array
  */
-if ( !function_exists( 'vt_resize') ) {
+if ( ! function_exists( 'vt_resize' ) ) {
 	function vt_resize( $attach_id = null, $img_url = null, $width, $height, $crop = false ) {
+
+		// Cast $width and $height to integer
+		$width = intval( $width );
+		$height = intval( $height );
 
 		// this is an attachment, so we have the ID
 		if ( $attach_id ) {
-
 			$image_src = wp_get_attachment_image_src( $attach_id, 'full' );
 			$file_path = get_attached_file( $attach_id );
-
 		// this is not an attachment, let's use the image url
 		} else if ( $img_url ) {
-
-			$file_path = parse_url( $img_url );
+			$file_path = parse_url( esc_url( $img_url ) );
 			$file_path = $_SERVER['DOCUMENT_ROOT'] . $file_path['path'];
 
 			//$file_path = ltrim( $file_path['path'], '/' );
@@ -578,9 +534,12 @@ if ( !function_exists( 'vt_resize') ) {
 		$file_info = pathinfo( $file_path );
 
 		// check if file exists
+		if ( !isset( $file_info['dirname'] ) && !isset( $file_info['filename'] ) && !isset( $file_info['extension'] )  )
+			return;
+
 		$base_file = $file_info['dirname'].'/'.$file_info['filename'].'.'.$file_info['extension'];
 		if ( !file_exists($base_file) )
-		 return;
+			return;
 
 		$extension = '.'. $file_info['extension'];
 
@@ -592,10 +551,8 @@ if ( !function_exists( 'vt_resize') ) {
 		// checking if the file size is larger than the target size
 		// if it is smaller or the same size, stop right here and return
 		if ( $image_src[1] > $width ) {
-
 			// the file is larger, check if the resized version already exists (for $crop = true but will also work for $crop = false if the sizes match)
 			if ( file_exists( $cropped_img_path ) ) {
-
 				$cropped_img_url = str_replace( basename( $image_src[0] ), basename( $cropped_img_path ), $image_src[0] );
 
 				$vt_image = array (
@@ -603,20 +560,17 @@ if ( !function_exists( 'vt_resize') ) {
 					'width' => $width,
 					'height' => $height
 				);
-
 				return $vt_image;
 			}
 
 			// $crop = false or no height set
 			if ( $crop == false OR !$height ) {
-
 				// calculate the size proportionaly
 				$proportional_size = wp_constrain_dimensions( $image_src[1], $image_src[2], $width, $height );
 				$resized_img_path = $no_ext_path.'-'.$proportional_size[0].'x'.$proportional_size[1].$extension;
 
 				// checking if the file already exists
 				if ( file_exists( $resized_img_path ) ) {
-
 					$resized_img_url = str_replace( basename( $image_src[0] ), basename( $resized_img_path ), $image_src[0] );
 
 					$vt_image = array (
@@ -624,7 +578,6 @@ if ( !function_exists( 'vt_resize') ) {
 						'width' => $proportional_size[0],
 						'height' => $proportional_size[1]
 					);
-
 					return $vt_image;
 				}
 			}
@@ -632,15 +585,25 @@ if ( !function_exists( 'vt_resize') ) {
 			// check if image width is smaller than set width
 			$img_size = getimagesize( $file_path );
 			if ( $img_size[0] <= $width ) $width = $img_size[0];
-			
+
 			// Check if GD Library installed
-			if (!function_exists ('imagecreatetruecolor')) {
+			if ( ! function_exists ( 'imagecreatetruecolor' ) ) {
 			    echo 'GD Library Error: imagecreatetruecolor does not exist - please contact your webhost and ask them to install the GD library';
 			    return;
 			}
 
 			// no cache files - let's finally resize it
-			$new_img_path = image_resize( $file_path, $width, $height, $crop );			
+			if ( function_exists( 'wp_get_image_editor' ) ) {
+				$image = wp_get_image_editor( $file_path );
+				if ( ! is_wp_error( $image ) ) {
+					$image->resize( $width, $height, $crop );
+					$save_data = $image->save();
+					if ( isset( $save_data['path'] ) ) $new_img_path = $save_data['path'];
+				}
+			} else {
+				$new_img_path = image_resize( $file_path, $width, $height, $crop );
+			}
+
 			$new_img_size = getimagesize( $new_img_path );
 			$new_img = str_replace( basename( $image_src[0] ), basename( $new_img_path ), $image_src[0] );
 
@@ -665,7 +628,6 @@ if ( !function_exists( 'vt_resize') ) {
 	}
 }
 
-
 /*-----------------------------------------------------------------------------------*/
 /* Depreciated - woo_get_image - Get Image from custom field */
 /*-----------------------------------------------------------------------------------*/
@@ -675,10 +637,7 @@ function woo_get_image($key = 'image', $width = null, $height = null, $class = "
 	// Run new function
 	woo_image( 'key='.$key.'&width='.$width.'&height='.$height.'&class='.$class.'&quality='.$quality.'&id='.$id.'&link='.$link.'&repeat='.$repeat.'&offset='.$offset.'&before='.$before.'&after='.$after.'&single='.$single.'&fore='.$force.'&return='.$return );
 	return;
-
-}
-
-
+} // End woo_get_image()
 
 /*-----------------------------------------------------------------------------------*/
 /* woo_embed - Get Video embed code from custom field */
@@ -695,258 +654,263 @@ Parameters:
 		$id = ID from post to pull custom field from
 */
 
-if ( !function_exists('woo_embed') ) {
-function woo_embed($args) {
-
+if ( ! function_exists( 'woo_embed' ) ) {
+function woo_embed( $args ) {
 	//Defaults
 	$key = 'embed';
 	$width = null;
 	$height = null;
 	$class = 'video';
 	$id = null;
+	$preserve_dimensions = false;
 
-	if ( !is_array($args) )
+	if ( ! is_array( $args ) )
 		parse_str( $args, $args );
 
-	extract($args);
+	extract( $args );
 
-  if(empty($id))
-    {
+  if( empty( $id ) ) {
     global $post;
     $id = $post->ID;
-    }
+  }
 
+// Cast $width and $height to integer
+$width = intval( $width );
+$height = intval( $height );
 
-$custom_field = get_post_meta($id, $key, true);
-
-if ($custom_field) :
-
+$custom_field = esc_textarea( get_post_meta( $id, $key, true ) );
+if ( $custom_field ) :
 	$custom_field = html_entity_decode( $custom_field ); // Decode HTML entities.
 
+	// Only run oEmbed checks if we definitely don't have any HTML tags in the field.
+	if ( $custom_field == strip_tags( $custom_field ) ) {
+		$custom_field = wp_oembed_get( $custom_field );
+	}
+
+	// If we definitely don't have a video, get out.
+	if ( '' == $custom_field ) return false;
+
+	// Store dimensions that were passed through the arguments.
     $org_width = $width;
     $org_height = $height;
-    $calculated_height = '';
+
+    // Store the dimensions present in the embed code.
     $embed_width = '';
     $embed_height = '';
 
-    // Get custom width and height
-    $custom_width = get_post_meta($id, 'width', true);
-    $custom_height = get_post_meta($id, 'height', true);
+	$raw_values = explode( ' ', $custom_field );
 
-    //Dynamic Height Calculation
-    if ($org_height == '' && $org_width != '') {
-    	$raw_values = explode( " ", $custom_field);
+	if ( 0 < count( $raw_values ) ) {
+		foreach ( $raw_values as $raw ) {
+			$embed_params = explode( '=', $raw );
+			if ( 'width' == $embed_params[0] ) {
+			 	$embed_width = preg_replace( '/[^0-9]/', '', $embed_params[1]);
+			} elseif ( 'height' == $embed_params[0] ) {
+				$embed_height = preg_replace( '/[^0-9]/', '', $embed_params[1]);
+			}
+		}
+	}
 
-    	foreach ($raw_values as $raw) {
-    		$embed_params = explode( "=",$raw);
-    		if ($embed_params[0] == 'width') {
-   		 		$embed_width = preg_replace( '/[^0-9]/', '', $embed_params[1]);
-    		}
-    		elseif ($embed_params[0] == 'height') {
-    			$embed_height = preg_replace( '/[^0-9]/', '', $embed_params[1]);
-    		}
-    	}
+    // If we have a width and no height, calculate the height.
+    if ( '' == $org_height && '' != $org_width ) {
+    	// Store a calculated height ratio.
+   	 	$calculated_height = '';
 
-    	$float_width = floatval($embed_width);
-		$float_height = floatval($embed_height);
-		@$float_ratio = $float_height / $float_width;
-		$calculated_height = intval($float_ratio * $width);
+    	$float_width = floatval( $embed_width );
+		$float_height = floatval( $embed_height );
+		$float_ratio = floatval( $float_height / $float_width );
+		$calculated_height = intval( $float_ratio * $width );
+
+		// Set the height.
+		$height = $calculated_height;
     }
 
-    // Set values: width="XXX", height="XXX"
-    if ( !$custom_width ) $width = 'width="'.$width.'"'; else $width = 'width="'.$custom_width.'"';
-    if ( $height == '' ) { $height = 'height="'.$calculated_height.'"'; } else { if ( !$custom_height ) { $height = 'height="'.$height.'"'; } else { $height = 'height="'.$custom_height.'"'; } }
-    $custom_field = stripslashes($custom_field);
-    $custom_field = preg_replace( '/width="([0-9]*)"/' , $width , $custom_field );
-    $custom_field = preg_replace( '/height="([0-9]*)"/' , $height , $custom_field );
+    // Custom height check (last minute).
+    if ( 0 >= intval( $width ) ) $width = intval( ( get_post_meta( $id, 'width', true ) ) );
+    if ( 0 >= intval( $height ) ) $height = intval( get_post_meta( $id, 'height', true ) );
 
-    // Set values: width:XXXpx, height:XXXpx
-    if ( !$custom_width ) $width = 'width:'.$org_width.'px'; else $width = 'width:'.$custom_width.'px';
-    if (  $height == '' ) { $height = 'height:'.$calculated_height.'px'; } else { if ( !$custom_height ) { $height = 'height:'.$org_height.'px'; } else { $height = 'height:'.$custom_height.'px'; } }
-    $custom_field = stripslashes($custom_field);
-    $custom_field = preg_replace( '/width:([0-9]*)px/' , $width , $custom_field );
-    $custom_field = preg_replace( '/height:([0-9]*)px/' , $height , $custom_field );
+    $atts = array( 'width' => $width, 'height' => $height );
+    $styles = array();
+	$styles_string = '';
+
+	if ( 0 < count( $atts ) ) {
+		foreach ( $atts as $k => $v ) {
+			$atts[$k] = $k . '="' . esc_attr( $v ) . '"';
+			$styles_string .= $k . ':' . intval( $v ) . 'px;';
+		}
+	}
+
+	if ( '' != $styles_string ) {
+		$styles_string = ' style="' . $styles_string . '"';
+	}
+
+	$custom_field = stripslashes( $custom_field );
+	if ( true != $preserve_dimensions ) {
+		$custom_field = preg_replace( '/width="([0-9]*)"/' , $atts['width'], $custom_field );
+		$custom_field = preg_replace( '/height="([0-9]*)"/' , $atts['height'], $custom_field );
+		$custom_field = str_replace( ' src="', $styles_string . ' src="', $custom_field );
+	}
 
 	// Suckerfish menu hack
-	$custom_field = str_replace( '<embed ', '<param name="wmode" value="transparent"></param><embed wmode="transparent" ',$custom_field);
-	$custom_field = str_replace( '<iframe ', '<iframe wmode="transparent" ',$custom_field);
-	$custom_field = str_replace( '" frameborder="', '?wmode=transparent" frameborder="',$custom_field);
+	$custom_field = str_replace( '<embed ', '<param name="wmode" value="transparent"></param><embed wmode="transparent" ', $custom_field );
+	$custom_field = str_replace( '<iframe ', '<iframe wmode="transparent" ', $custom_field );
+	$custom_field = str_replace( '" frameborder="', '?wmode=transparent" frameborder="', $custom_field );
+
+	// Find and sanitize video URL. Add "wmode=transparent" to URL.
+	$video_url = preg_match( '/src=["\']?([^"\' ]*)["\' ]/is', $custom_field, $matches );
+	if ( isset( $matches[1] ) ) {
+		$custom_field = str_replace( $matches[0], 'src="' . esc_url( add_query_arg( 'wmode', 'transparent', $matches[1] ) ) . '"', $custom_field );
+	}
 
 	$output = '';
-    $output .= '<div class="'. $class .'">' . $custom_field . '</div>';
+    $output .= '<div class="'. esc_attr( $class ) .'">' . $custom_field . '</div>';
 
-    return do_shortcode($output);
-
+	return apply_filters( 'woo_embed', $output );
 else :
-
 	return false;
-
 endif;
+}
+}
 
-}
-}
+/*-----------------------------------------------------------------------------------*/
+/* Add default filters to woo_embed() */
+/*-----------------------------------------------------------------------------------*/
+
+add_filter( 'woo_embed', 'do_shortcode' );
 
 /*-----------------------------------------------------------------------------------*/
 /* Depreciated - woo_get_embed - Get Video embed code from custom field */
 /*-----------------------------------------------------------------------------------*/
-
 // Depreciated
-function woo_get_embed($key = 'embed', $width, $height, $class = 'video', $id = null) {
+function woo_get_embed( $key = 'embed', $width, $height, $class = 'video', $id = null, $preserve_dimensions = false ) {
 	// Run new function
-	return woo_embed( 'key='.$key.'&width='.$width.'&height='.$height.'&class='.$class.'&id='.$id );
-
-}
-
-
+	return woo_embed( 'key=' . $key . '&width=' . $width . '&height=' . $height . '&class=' . $class . '&id=' . $id . '&preserve_dimensions=' . $preserve_dimensions );
+} // End woo_get_embed()
 
 /*-----------------------------------------------------------------------------------*/
 /* Woo Show Page Menu */
 /*-----------------------------------------------------------------------------------*/
-
 // Show menu in header.php
 // Exlude the pages from the slider
-function woo_show_pagemenu( $exclude="" ) {
+function woo_show_pagemenu( $exclude = '' ) {
     // Split the featured pages from the options, and put in an array
     if ( get_option( 'woo_ex_featpages') ) {
         $menupages = get_option( 'woo_featpages' );
         $exclude = $menupages . ',' . $exclude;
     }
 
-    $pages = wp_list_pages( 'sort_column=menu_order&title_li=&echo=0&depth=1&exclude='.$exclude);
-    $pages = preg_replace( '%<a ([^>]+)>%U','<a $1><span>', $pages);
-    $pages = str_replace( '</a>','</span></a>', $pages);
+    $pages = wp_list_pages( 'sort_column=menu_order&title_li=&echo=0&depth=1&exclude=' . $exclude );
+    $pages = preg_replace( '%<a ([^>]+)>%U','<a $1><span>', $pages );
+    $pages = str_replace( '</a>','</span></a>', $pages );
     echo $pages;
-}
-
-
+} // End woo_show_pagemenu()
 
 /*-----------------------------------------------------------------------------------*/
 /* Get the style path currently selected */
 /*-----------------------------------------------------------------------------------*/
-
 function woo_style_path() {
-
 	$return = '';
 
 	$style = $_REQUEST['style'];
 
 	// Sanitize request input.
-	$style = strtolower( trim( strip_tags( $style ) ) );
+	$style = esc_attr( strtolower( trim( strip_tags( $style ) ) ) );
 
 	if ( $style != '' ) {
-
 		$style_path = $style;
-
 	} else {
-
-		$stylesheet = get_option( 'woo_alt_stylesheet' );
+		$stylesheet = esc_attr( get_option( 'woo_alt_stylesheet' ) );
 
 		// Prevent against an empty return to $stylesheet.
-
 		if ( $stylesheet == '' ) {
-
 			$stylesheet = 'default.css';
-
-		} // End IF Statement
+		}
 
 		$style_path = str_replace( '.css', '', $stylesheet );
-
-	} // End IF Statement
+	}
 
 	if ( $style_path == 'default' ) {
-
 		$return = 'images';
-
 	} else {
-
 		$return = 'styles/' . $style_path;
+	}
 
-	} // End IF Statement
-
-	echo $return;
-
+	echo esc_html( $return );
 } // End woo_style_path()
 
 
 /*-----------------------------------------------------------------------------------*/
 /* Get page ID */
 /*-----------------------------------------------------------------------------------*/
-function get_page_id($page_slug){
-	$page_id = get_page_by_path($page_slug);
+function get_page_id( $page_slug ) {
+	$page_id = get_page_by_path( $page_slug );
     if ($page_id) {
         return $page_id->ID;
     } else {
         return null;
     }
-
-}
+} // End get_page_id()
 
 /*-----------------------------------------------------------------------------------*/
 /* Tidy up the image source url */
 /*-----------------------------------------------------------------------------------*/
-function cleanSource($src) {
-
+function cleanSource( $src ) {
 	// remove slash from start of string
 	if(strpos($src, "/") == 0) {
 		$src = substr($src, -(strlen($src) - 1));
 	}
 
 	// Check if same domain so it doesn't strip external sites
-	$host = str_replace( 'www.', '', $_SERVER['HTTP_HOST']);
-	if ( !strpos($src,$host) )
+	$host = str_replace( 'www.', '', $_SERVER['HTTP_HOST'] );
+	if ( ! strpos( $src, $host ) )
 		return $src;
 
 
 	$regex = "/^((ht|f)tp(s|):\/\/)(www\.|)" . $host . "/i";
-	$src = preg_replace ($regex, '', $src);
-	$src = htmlentities ($src);
+	$src = preg_replace ( $regex, '', $src );
+	$src = htmlentities ( $src );
 
     // remove slash from start of string
-    if (strpos($src, '/') === 0) {
-        $src = substr ($src, -(strlen($src) - 1));
+    if ( strpos( $src, '/' ) === 0 ) {
+        $src = substr ( $src, -( strlen( $src ) - 1 ) );
     }
 
 	return $src;
-}
-
-
+} // End cleanSource()
 
 /*-----------------------------------------------------------------------------------*/
 /* Show image in RSS feed */
-/* Original code by Justin Tadlock http://justintadlock.com */
+/* Original code by Justin Tadlock */
 /*-----------------------------------------------------------------------------------*/
-if ( get_option( 'woo_rss_thumb') == 'true' ) {
-	if ( get_option( 'rss_use_excerpt' ) ) 
+if ( 'true' == get_option( 'woo_rss_thumb', false ) || true == apply_filters( 'wf_add_image_to_rss', false ) ) {
+	if ( get_option( 'rss_use_excerpt' ) )
 		add_filter( 'the_excerpt_rss', 'add_image_RSS' );
 	else
-		add_filter( 'the_content', 'add_image_RSS' );
+		add_filter( 'the_content_feed', 'add_image_RSS' );
 }
 
-function add_image_RSS( $content ) {
-
-	global $post, $id;
-	$blog_key = substr( md5( home_url( '/' ) ), 0, 16 );
+/**
+ * Maybe add the featured image to the RSS feed.
+ * @param   string $content The content of the specified RSS feed item.
+ * @since   1.0.0
+ * @return  string
+ */
+function add_image_RSS ( $content ) {
 	if ( ! is_feed() ) return $content;
+	global $post, $id;
 
 	// Get the "image" from custom field
-	//$image = get_post_meta($post->ID, 'image', $single = true);
-	$image = woo_image( 'return=true&link=url' ); 
-	$image_width = '240';
+	$image = woo_image( 'return=true&link=url' );
+	$image_width = intval( apply_filters( 'wf_add_image_to_rss_width', 240 ) );
 
 	// If there's an image, display the image with the content
-	if($image != '') {
-		$content = '<p style="float:right; margin:0 0 10px 15px; width:'.$image_width.'px;">
-		<img src="'.$image.'" width="'.$image_width.'" />
+	if( '' != $image ) {
+		$content = '<p style="float: right; margin: 0 0 10px 15px; width:' . esc_attr( intval( $image_width ) ) . 'px; height: auto;">
+		<img src="' . esc_url( $image ) . '" width="' . esc_attr( intval( $image_width ) ) . '" style="max-width: 100%; height: auto;" />
 		</p>' . $content;
-		return $content;
 	}
-
-	// If there's not an image, just display the content
-	else {
-		$content = $content;
-		return $content;
-	}
-}
+	return $content;
+} // End add_image_RSS()
 
 
 
@@ -955,9 +919,9 @@ function add_image_RSS( $content ) {
 /*-----------------------------------------------------------------------------------*/
 function woo_analytics(){
 	$output = get_option( 'woo_google_analytics' );
-	if ( $output <> "" )
-		echo stripslashes($output) . "\n";
-}
+	if ( $output != '' )
+		echo stripslashes( $output ) . "\n";
+} // End woo_analytics()
 add_action( 'wp_footer','woo_analytics' );
 
 
@@ -966,7 +930,7 @@ add_action( 'wp_footer','woo_analytics' );
 /* Browser detection body_class() output */
 /*-----------------------------------------------------------------------------------*/
 add_filter( 'body_class','browser_body_class' );
-function browser_body_class($classes) {
+function browser_body_class( $classes ) {
 	global $is_lynx, $is_gecko, $is_IE, $is_opera, $is_NS4, $is_safari, $is_chrome, $is_iphone;
 
 	if($is_lynx) $classes[] = 'lynx';
@@ -996,106 +960,48 @@ function browser_body_class($classes) {
 	}
 	else $classes[] = 'unknown';
 
-	if($is_iphone) $classes[] = 'iphone';
+	if( $is_iphone ) $classes[] = 'iphone';
+
+	// Alternative style body class.
+	$style = get_option( 'woo_alt_stylesheet', 'default' );
+	$style = str_replace( '.css', '', $style );
+	if ( '' != $style ) {
+		$classes[] = 'alt-style-' . esc_attr( $style );
+	}
 	return $classes;
-}
+} // End browser_body_class()
 
 /*-----------------------------------------------------------------------------------*/
 /* Twitter's Blogger.js output for Twitter widgets */
 /*-----------------------------------------------------------------------------------*/
 
-if ( !function_exists( 'woo_twitter_script') ) {
-	function woo_twitter_script($unique_id,$username,$limit) {
-	?>
-	<script type="text/javascript">
-	<!--//--><![CDATA[//><!--
-
-	    function twitterCallback2(twitters) {
-
-	      var statusHTML = [];
-	      for (var i=0; i<twitters.length; i++){
-	        var username = twitters[i].user.screen_name;
-	        var status = twitters[i].text.replace(/((https?|s?ftp|ssh)\:\/\/[^"\s\<\>]*[^.,;'">\:\s\<\>\)\]\!])/g, function(url) {
-	          return '<a href="'+url+'">'+url+'</a>';
-	        }).replace(/\B@([_a-z0-9]+)/ig, function(reply) {
-	          return  reply.charAt(0)+'<a href="http://twitter.com/'+reply.substring(1)+'">'+reply.substring(1)+'</a>';
-	        });
-	        statusHTML.push( '<li><span class="content">'+status+'</span> <a style="font-size:85%" class="time" href="http://twitter.com/'+username+'/statuses/'+twitters[i].id_str+'">'+relative_time(twitters[i].created_at)+'</a></li>' );
-	      }
-	      document.getElementById( 'twitter_update_list_<?php echo $unique_id; ?>').innerHTML = statusHTML.join( '' );
-	    }
-
-	    function relative_time(time_value) {
-	      var values = time_value.split( " " );
-	      time_value = values[1] + " " + values[2] + ", " + values[5] + " " + values[3];
-	      var parsed_date = Date.parse(time_value);
-	      var relative_to = (arguments.length > 1) ? arguments[1] : new Date();
-	      var delta = parseInt((relative_to.getTime() - parsed_date) / 1000);
-	      delta = delta + (relative_to.getTimezoneOffset() * 60);
-
-	      if (delta < 60) {
-	        return '<?php _e( 'less than a minute ago', 'woothemes' ); ?>';
-	      } else if(delta < 120) {
-	        return '<?php _e( 'about a minute ago', 'woothemes' ); ?>';
-	      } else if(delta < (60*60)) {
-	        return (parseInt(delta / 60)).toString() + ' <?php _e( 'minutes ago', 'woothemes' ); ?>';
-	      } else if(delta < (120*60)) {
-	        return 'about an hour ago';
-	      } else if(delta < (24*60*60)) {
-	        return 'about ' + (parseInt(delta / 3600)).toString() + ' <?php _e( 'hours ago', 'woothemes' ); ?>';
-	      } else if(delta < (48*60*60)) {
-	        return '1 day ago';
-	      } else {
-	        return (parseInt(delta / 86400)).toString() + ' <?php _e( 'days ago', 'woothemes' ); ?>';
-	      }
-	    }
-	//-->!]]>
-	</script>
-	<script type="text/javascript" src="http<?php if (is_ssl()) { echo 's'; } ?>://api.twitter.com/1/statuses/user_timeline/<?php echo $username; ?>.json?callback=twitterCallback2&amp;count=<?php echo $limit; ?>&amp;include_rts=t"></script>
-	<?php
-	}
+if ( ! function_exists( 'woo_twitter_script' ) ) {
+	function woo_twitter_script() {
+		_deprecated_function( __FUNCTION__, '6.0.0', __( 'WooDojo Twitter widgets.', 'woothemes' ) );
+		return false;
+	} // End woo_twitter_script()
 }
 
 /*-----------------------------------------------------------------------------------*/
-/* Template Detector */
+/* Deprecated: Template Detector */
 /*-----------------------------------------------------------------------------------*/
-function woo_active_template($filename = null){
+function woo_active_template( $filename = null ) {
+	_deprecated_function( __FUNCTION__, '5.4.0' );
+	return false; // No $filename argument was set
+} // End woo_active_template()
 
-	if(isset($filename)){
-
-		global $wpdb;
-		$query = "SELECT *,count(*) AS used FROM $wpdb->postmeta WHERE meta_key = '_wp_page_template' AND meta_value = '$filename' GROUP BY meta_value";
-		$results = $wpdb->get_row($wpdb->prepare($query),'ARRAY_A' ); // Select thrid coloumn accross
-
-		if(empty($results))
-			return false;
-
-		$post_id = $results['post_id'];
-		$trash = get_post_status($post_id); // Check for trash
-
-		if($trash != 'trash')
-			return true;
-		else
-	 		return false;
-
-	} else {
-		return false; // No $filename argument was set
-	}
-
-}
 /*-----------------------------------------------------------------------------------*/
 /* WooFramework Update Page */
 /*-----------------------------------------------------------------------------------*/
 
 function woothemes_framework_update_page() {
-
 	// Clear transients.
 	delete_transient( 'woo_framework_critical_update' );
 	delete_transient( 'woo_framework_critical_update_data' );
 	delete_transient( 'wooframework_version_data' );
 
         $method = get_filesystem_method();
-        
+
         $to = ABSPATH . 'wp-content/themes/' . get_option( 'template' ) . '/functions/';
         if(isset($_POST['password'])){
 
@@ -1105,7 +1011,7 @@ function woothemes_framework_update_page() {
         }
         elseif(isset($_POST['woo_ftp_cred'])){
 
-             $cred = unserialize($_POST['woo_ftp_cred']);
+             $cred = unserialize(base64_decode($_POST['woo_ftp_cred']));
              $filesystem = WP_Filesystem($cred);
 
         } else {
@@ -1125,10 +1031,10 @@ function woothemes_framework_update_page() {
 
             // Clear the transient to force a fresh update.
             delete_transient( 'wooframework_version_data' );
-            	
-            $localversion = get_option( 'woo_framework_version' );
+
+            $localversion = esc_html( get_option( 'woo_framework_version' ) );
             $remoteversion = woo_get_fw_version();
-            
+
             // Test if new version
             $upd = false;
 			$loc = explode( '.',$localversion);
@@ -1143,26 +1049,26 @@ function woothemes_framework_update_page() {
 
             ?>
             <?php screen_icon( 'tools' ); ?>
-            <h2>Framework Update</h2>
+            <h2><?php _e( 'Framework Updates', 'woothemes' ); ?></h2>
             <span style="display:none"><?php echo $method; ?></span>
             <form method="post"  enctype="multipart/form-data" id="wooform" action="<?php /* echo $url; */ ?>">
 
                 <?php if( $upd ) { ?>
                 <?php wp_nonce_field( 'update-options' ); ?>
-                <h3>A new version of WooFramework is available.</h3>
-                <p>This updater will download and extract the latest WooFramework files to your current theme's functions folder. </p>
-                <p>We recommend backing up your theme files before updating.</p>
+                <h3><?php _e( 'A new version of WooFramework is available.', 'woothemes' ); ?></h3>
+                <p><?php _e( 'This updater will download and extract the latest WooFramework files to your current theme\'s functions folder.', 'woothemes' ); ?></p>
+                <p><?php _e( 'We recommend backing up your theme files and updating WordPress to latest version before proceeding.', 'woothemes' ); ?></p>
                 <p>&rarr; <strong>Your version:</strong> <?php echo $localversion; ?></p>
 
                 <p>&rarr; <strong>Current Version:</strong> <?php echo $remoteversion['version']; ?></p>
-
                 <input type="submit" class="button" value="Update Framework" />
                 <?php } else { ?>
                 <h3>You have the latest version of WooFramework</h3>
                 <p>&rarr; <strong>Your version:</strong> <?php echo $localversion; ?></p>
                 <?php } ?>
+                 <p><a href="<?php echo esc_url( 'http://docs.woothemes.com/document/wooframework-release-notes/' ); ?>" title="<?php esc_attr_e( 'Before upgrading, we recommend reading the WooFramework release notes', 'woothemes' ); ?>"><strong><?php _e( 'Read the Release Notes', 'woothemes' ); ?></strong></a></p>
                 <input type="hidden" name="woo_update_save" value="save" />
-                <input type="hidden" name="woo_ftp_cred" value="<?php echo esc_attr( serialize($_POST)); ?>" />
+                <input type="hidden" name="woo_ftp_cred" value="<?php echo esc_attr( base64_encode(serialize($_POST))); ?>" />
 
             </form>
             <?php } ?>
@@ -1174,30 +1080,23 @@ function woothemes_framework_update_page() {
 /* WooFramework Update Head */
 /*-----------------------------------------------------------------------------------*/
 
-function woothemes_framework_update_head(){
-
-  if(isset($_REQUEST['page'])){
-
+function woothemes_framework_update_head() {
+  if( isset( $_REQUEST['page'] ) ) {
 	// Sanitize page being requested.
-	$_page = strtolower( strip_tags( trim( $_REQUEST['page'] ) ) );
+	$_page = esc_attr( $_REQUEST['page'] );
 
-	if( $_page == 'woothemes_framework_update'){
-
+	if( $_page == 'woothemes_framework_update' ) {
 		//Setup Filesystem
 		$method = get_filesystem_method();
 
-		if(isset($_POST['woo_ftp_cred'])){
-
-			$cred = unserialize($_POST['woo_ftp_cred']);
+		if( isset( $_POST['woo_ftp_cred'] ) ) {
+			$cred = unserialize( base64_decode( $_POST['woo_ftp_cred'] ) );
 			$filesystem = WP_Filesystem($cred);
-
 		} else {
-
 		   $filesystem = WP_Filesystem();
+		}
 
-		};
-
-		if($filesystem == false && $_POST['upgrade'] != 'Proceed'){
+		if( $filesystem == false && $_POST['upgrade'] != 'Proceed' ) {
 
 			function woothemes_framework_update_filesystem_warning() {
 					$method = get_filesystem_method();
@@ -1209,17 +1108,17 @@ function woothemes_framework_update_head(){
 		if(isset($_REQUEST['woo_update_save'])){
 
 			// Sanitize action being requested.
-			$_action = strtolower( trim( strip_tags( $_REQUEST['woo_update_save'] ) ) );
+			$_action = esc_attr( $_REQUEST['woo_update_save'] );
 
-		if( $_action == 'save' ){
+		if( $_action == 'save' ) {
 
-		$temp_file_addr = download_url( 'http://www.woothemes.com/updates/framework.zip' );
+		$temp_file_addr = download_url( esc_url( 'http://wooframework.s3.amazonaws.com/latest/framework.zip' ) );
 
 		if ( is_wp_error($temp_file_addr) ) {
 
-			$error = $temp_file_addr->get_error_code();
+			$error = esc_html( $temp_file_addr->get_error_code() );
 
-			if($error == 'http_no_url') {
+			if( $error == 'http_no_url' ) {
 			//The source file was not found or is invalid
 				function woothemes_framework_update_missing_source_warning() {
 					echo "<div id='source-warning' class='updated fade'><p>Failed: Invalid URL Provided</p></div>";
@@ -1238,7 +1137,7 @@ function woothemes_framework_update_head(){
 		  }
 		//Unzip it
 		global $wp_filesystem;
-		$to = $wp_filesystem->wp_content_dir() . "/themes/" . get_option( 'template') . "/functions/";
+		$to = $wp_filesystem->wp_content_dir() . "/themes/" . get_option( 'template' ) . "/functions/";
 
 		$dounzip = unzip_file($temp_file_addr, $to);
 
@@ -1247,7 +1146,7 @@ function woothemes_framework_update_head(){
 		if ( is_wp_error($dounzip) ) {
 
 			//DEBUG
-			$error = $dounzip->get_error_code();
+			$error = esc_html( $dounzip->get_error_code() );
 			$data = $dounzip->get_error_data($error);
 			//echo $error. ' - ';
 			//print_r($data);
@@ -1285,7 +1184,7 @@ function woothemes_framework_update_head(){
 		function woothemes_framework_updated_success() {
 			echo "<div id='framework-upgraded' class='updated fade'><p>New framework successfully downloaded, extracted and updated.</p></div>";
 		}
-		
+
 		add_action( 'admin_notices', 'woothemes_framework_updated_success' );
 
 		}
@@ -1305,11 +1204,11 @@ function woo_get_fw_version( $url = '', $check_if_critical = false ) {
 	if( ! empty( $url ) ) {
 		$fw_url = $url;
 	} else {
-    	$fw_url = 'http://www.woothemes.com/updates/functions-changelog.txt';
+    	$fw_url = 'http://wooframework.s3.amazonaws.com/latest/functions-changelog.txt';
     }
-    
+
     $output = array( 'version' => '', 'is_critical' => false );
-    
+
     $version_data = get_transient( 'wooframework_version_data' );
 
 	if ( $version_data != '' && $check_if_critical == false ) { return $version_data; }
@@ -1322,7 +1221,7 @@ function woo_get_fw_version( $url = '', $check_if_critical = false ) {
             if( $line_num > 1 ) {    // Not the first or second... dodgy :P
 
                 if ( preg_match( '/^[0-9]/', $line ) ) {
-                
+
 						// Do critical update check.
 						if ( $check_if_critical && ( strtolower( trim( substr( $line, -10 ) ) ) == 'critical' ) ) {
 							$output['is_critical'] = true;
@@ -1339,10 +1238,10 @@ function woo_get_fw_version( $url = '', $check_if_critical = false ) {
     } else {
         $output['version'] = get_option( 'woo_framework_version' );
     }
-    
+
     // Set the transient containing the latest version number.
 	set_transient( 'wooframework_version_data', $output , 60*60*24 );
-	
+
 	return $output;
 } // End woo_get_fw_version()
 
@@ -1353,717 +1252,117 @@ function woo_get_fw_version( $url = '', $check_if_critical = false ) {
 
 function woo_framework_version_checker( $local_version, $check_if_critical = false ) {
 	$data = array( 'is_update' => false, 'version' => '1.0.0', 'status' => 'none' );
-	
+
 	if ( ! $local_version ) { return $data; }
-	
+
 	$version_data = woo_get_fw_version( '', $check_if_critical );
-	
+
 	$check = version_compare( $version_data['version'], $local_version ); // Returns 1 if there is an update available.
-	
+
 	if ( $check == 1 ) {
 		$data['is_update'] = true;
 		$data['version'] = $version_data['version'];
 		$data['is_critical'] = $version_data['is_critical'];
 	}
-	
+
 	return $data;
 } // End woo_framework_version_checker()
 
-/*-----------------------------------------------------------------------------------*/
-/* Woo URL shortener */
-/*-----------------------------------------------------------------------------------*/
-
-function woo_short_url($url) {
-	$service = get_option( 'woo_url_shorten' );
-	$bitlyapilogin = get_option( 'woo_bitly_api_login' );;
-	$bitlyapikey = get_option( 'woo_bitly_api_key' );;
-	if (isset($service)) {
-		switch ($service)
-		{
-    		case 'TinyURL':
-    			$shorturl = getTinyUrl($url);
-    			break;
-    		case 'Bit.ly':
-    			if (isset($bitlyapilogin) && isset($bitlyapikey) && ($bitlyapilogin != '') && ($bitlyapikey != '')) {
-    				$shorturl = make_bitly_url($url,$bitlyapilogin,$bitlyapikey,'json' );
-    			}
-    			else {
-    				$shorturl = getTinyUrl($url);
-    			}
-    			break;
-    		case 'Off':
-    			$shorturl = $url;
-    			break;
-    		default:
-    			$shorturl = $url;
-    			break;
-    	}
-	}
-	else {
-		$shorturl = $url;
-	}
-	return $shorturl;
-}
-
-//TinyURL
-function getTinyUrl($url) {
-	$tinyurl = file_get_contents_curl( "http://tinyurl.com/api-create.php?url=".$url);
-	return $tinyurl;
-}
-
-//Bit.ly
-function make_bitly_url($url,$login,$appkey,$format = 'xml',$version = '2.0.1')
-{
-	//create the URL
-	$bitly = 'http://api.bit.ly/shorten?version='.$version.'&longUrl='.urlencode($url).'&login='.$login.'&apiKey='.$appkey.'&format='.$format;
-
-	//get the url
-	//could also use cURL here
-	$response = file_get_contents_curl($bitly);
-
-	//parse depending on desired format
-	if(strtolower($format) == 'json')
-	{
-		$json = @json_decode($response,true);
-		return $json['results'][$url]['shortUrl'];
-	}
-	else //xml
-	{
-		$xml = simplexml_load_string($response);
-		return 'http://bit.ly/'.$xml->results->nodeKeyVal->hash;
-	}
-}
-
-//Alternative CURL function
-function file_get_contents_curl($url) {
-	if ( $url == '' || $url == null ) { return ''; }
-	$data = '';
-	
-	$response = wp_remote_get( $url );
-
-	if ( is_wp_error( $response ) ) {
-		$data  = $url;
-	} else {
-		$data = $response['body'];
-	}
-	
-	return $data;
-} // End file_get_contents_curl()
-
-// Checks for presence of the cURL extension.
-function _iscurlinstalled() {
-	if  (in_array  ( 'curl', get_loaded_extensions())) {
-		if (function_exists( 'curl_init')) {
-			return true;
-		} else {
-			return false;
-		}
-	}
-	else{
-		if (function_exists( 'curl_init')) {
-			return true;
-		} else {
-			return false;
-		}
-	}
-}
 
 /*-----------------------------------------------------------------------------------*/
 /* woo_title() */
 /*-----------------------------------------------------------------------------------*/
 
-function woo_title(){
-
-	global $post;
-	$layout = '';
-
-	// Setup the variable that will, ultimately, hold the title value.
-	$title = '';
-
-	//Taxonomy Details WP 3.0 only
-	if ( function_exists( 'get_taxonomies') ) :
-		global $wp_query;
-		$taxonomy_obj = $wp_query->get_queried_object();
-		if ( ! empty( $taxonomy_obj->name ) && function_exists( 'is_post_type_archive' ) && ! is_post_type_archive() ) :
-			$taxonomy_nice_name = $taxonomy_obj->name;
-			$term_id = $taxonomy_obj->term_taxonomy_id;
-			$taxonomy_short_name = $taxonomy_obj->taxonomy;
-			$taxonomy_top_level_items = get_taxonomies(array( 'name' => $taxonomy_short_name), 'objects' );
-			$taxonomy_top_level_item = $taxonomy_top_level_items[$taxonomy_short_name]->label;
-		elseif ( ! empty( $taxonomy_obj->name ) && function_exists( 'is_post_type_archive' ) && is_post_type_archive() ) :
-			$archive_name = $taxonomy_obj->label;
-		endif;
-	endif;
-
-	//3rd Party Plugins
-	$use_third_party_data = false;
-	if(get_option( 'seo_woo_use_third_party_data') == 'true'){
-		$use_third_party_data = true;
+/**
+ * Display or return the title for the current screen.
+ * @since  1.0.0
+ * @param  boolean $echo Whether or not to echo the title. Default: true.
+ * @return string  The title.
+ */
+if ( ! function_exists( 'woo_title' ) ) {
+function woo_title ( $echo = true ) {
+	// If the parameter isn't a boolean, set it to the default value.
+	if ( ! is_bool( $echo ) ) {
+		$echo = true;
 	}
-
-	// Check if 3rd party plugin is in use, and output default wp_title() if it is
-	if(
-		(
-			class_exists( 'All_in_One_SEO_Pack') ||
-			class_exists( 'Headspace_Plugin') ||
-			class_exists( 'WPSEO_Admin' ) ||
-			class_exists( 'WPSEO_Frontend' )
-    	)
-	&&
-		( $use_third_party_data == true ) ) { 
-			
-		global $page, $paged;
-	
-		wp_title( '|', true, 'right' );
-	
-		// Add the blog name.
-		bloginfo( 'name' );
-	
-		// Add the blog description for the home/front page.
-		$site_description = get_bloginfo( 'description', 'display' );
-		if ( $site_description && ( is_home() || is_front_page() ) )
-			echo " | $site_description";
-	
-		// Add a page number if necessary:
-		if ( $paged >= 2 || $page >= 2 )
-		echo ' | ' . sprintf( __( 'Page %s', 'twentyeleven' ), max( $paged, $page ) );
-		return;
-					
-	}
-
-	$sep = get_option( 'seo_woo_seperator' );
-	if(empty($sep)) { $sep = " | ";} else { $sep = ' ' . $sep . ' ';}
-	$use_wp_title = get_option( 'seo_woo_wp_title' );
-	$home_layout = get_option( 'seo_woo_home_layout' );
-	$single_layout = get_option( 'seo_woo_single_layout' );
-	$page_layout = get_option( 'seo_woo_page_layout' );
-	$archive_layout = get_option( 'seo_woo_archive_layout' );
-
-
-	$output = '';
-	if($use_wp_title == 'true'){
-
-		if(is_home() OR is_front_page()){
-			switch ($home_layout){
-				case 'a': $output = get_bloginfo( 'name') . $sep . get_bloginfo( 'description' );
-				break;
-				case 'b': $output = get_bloginfo( 'name' );
-				break;
-				case 'c': $output = get_bloginfo( 'description' );
-				break;
-				}
-			if(is_paged()){
-				$paged_var = get_query_var( 'paged' );
-				if(get_option( 'seo_woo_paged_var_pos') == 'after'){
-
-					$output .= $sep . get_option( 'seo_woo_paged_var') . ' ' . $paged_var;
-
-				} else {
-
-					$output = get_option( 'seo_woo_paged_var') . ' ' . $paged_var . $sep . $output;
-
-				}
-
-			}
-			$output = stripslashes($output);
-			echo $output;
-		}
-		else {
-		if (is_single()) { $layout = $single_layout; }
-		elseif  (is_page()) { $layout = $page_layout; }
-		elseif  (is_archive()) { $layout = $archive_layout; }
-		elseif  (is_tax()) { $layout = $archive_layout; }
-		elseif  (is_search()) { $layout = 'search'; }
-		elseif  (is_404()) { $layout = $single_layout; }
-
-
-
-		//Check if there is a custom value added to post meta
-		$wooseo_title = get_post_meta($post->ID,'seo_title',true); // WooSEO
-		$aio_title = get_post_meta($post->ID,'_aioseop_title',true); // All-in-One SEO Pack
-		$headspace_title = get_post_meta($post->ID,'_headspace_page_title',true); // Headspace SEO
-		$wpseo_title = get_post_meta( $post->ID,'_yoast_wpseo_title', true ); // WordPress SEO
-
-		if( get_option( 'seo_woo_wp_custom_field_title') != 'true' && is_singular() ) {
-			if( ! empty($wooseo_title ) ){
-				$layout = 'wooseo';
-			} elseif(!empty($aio_title) AND $use_third_party_data) {
-				$layout = 'aioseo';
-			} elseif(!empty($headspace_title) AND $use_third_party_data) {
-				$layout = 'headspace';
-			} elseif(!empty($wpseo_title) AND $use_third_party_data) {
-				$layout = 'wpseo';
-			}
-		}
-			switch ( $layout ) {
-				case 'a': $output = wp_title($sep,false,true) . get_bloginfo( 'name' );
-				break;
-				case 'b': $output = wp_title( '',false,false);
-				break;
-				case 'c': $output = get_bloginfo( 'name') . wp_title($sep,false,false);
-				break;
-				case 'd': $output = wp_title($sep,false,true) . get_bloginfo( 'description' );
-				break;
-				case 'e': $output = get_bloginfo( 'name') . $sep . wp_title($sep,false,true) . get_bloginfo( 'description' );
-				break;
-				case 'search':  $output = get_bloginfo( 'name') . wp_title($sep,false,false); // Search is hardcoded
-				break;
-				case 'wooseo':  $output = $wooseo_title; // WooSEO Title
-				break;
-				case 'aioseo':  $output = $aio_title; // All-in-One SEO Pack Title
-				break;
-				case 'headspace':  $output = $headspace_title; // Headspace Title
-				break;
-				case 'wpseo':  $output = $wpseo_title; // WordPress SEO Title
-				break;
-			}
-			if(is_paged()){
-				$paged_var = get_query_var( 'paged' );
-				if(get_option( 'seo_woo_paged_var_pos') == 'after'){
-					$output .= $sep . get_option( 'seo_woo_paged_var') . ' ' . $paged_var;
-				} else {
-					$output = get_option( 'seo_woo_paged_var') . ' ' . $paged_var . $sep . $output;
-				}
-			}
-			$output = stripslashes($output);
-
-			if(empty($output)) {
-				$title = wp_title( '&raquo;', false );
-			} else {
-				$title = $output;
-			}
-
-		}
-	}
-	else {
-
-		if ( is_home() ) { $title = get_bloginfo( 'name') . $sep . get_bloginfo( 'description' ); }
-		elseif ( is_search() ) { $title = get_bloginfo( 'name') . $sep . __( 'Search Results', 'woothemes' );  }
-		elseif ( is_author() ) { $title = get_bloginfo( 'name') . $sep . __( 'Author Archives', 'woothemes' );  }
-		elseif ( is_single() ) { $title = wp_title( $sep, false, true ) . get_bloginfo( 'name' );  }
-		elseif ( is_page() ) { $title = get_bloginfo( 'name' ) . wp_title( $sep, false, 'none' );  }
-		elseif ( is_category() ) { $title = get_bloginfo( 'name') . $sep . __( 'Category Archive', 'woothemes' ) . $sep . single_cat_title( '',false );  }
-		elseif ( is_tax() ) { $title = get_bloginfo( 'name') . $sep . $taxonomy_top_level_item . __( ' Archive', 'woothemes' ) . $sep . $taxonomy_nice_name;  }
-		elseif ( is_day() ) { $title = get_bloginfo( 'name') . $sep . __( 'Daily Archive', 'woothemes' ) . $sep . get_the_time( 'jS F, Y' );  }
-		elseif ( is_month() ) { $title = get_bloginfo( 'name') . $sep . __( 'Monthly Archive', 'woothemes' ) . $sep . get_the_time( 'F' );  }
-		elseif ( is_year() ) { $title = get_bloginfo( 'name') . $sep . __( 'Yearly Archive', 'woothemes' ) . $sep . get_the_time( 'Y' );  }
-		elseif ( is_tag() ) {  $title = get_bloginfo( 'name') . $sep . __( 'Tag Archive', 'woothemes' ) . $sep . single_tag_title( '',false); }
-		elseif ( function_exists( 'is_post_type_archive' ) && is_post_type_archive() ) { $title = get_bloginfo( 'name') . $sep . $archive_name . __( ' Archive', 'woothemes' );  }
-	}
+	$sep = '|';
+	$raw_title = wp_title( $sep, false, 'right' );
 
 	// Allow child themes/plugins to filter the title value.
-	$title = apply_filters( 'woo_title', $title, $sep );
-
-	// Display the formatted title.
-	echo $title;
+	$title = apply_filters( 'woo_title', $raw_title, $sep, $raw_title );
+	if ( true == $echo ) echo $title;
+	return $title;
+} // End woo_title()
 }
 
-/*-----------------------------------------------------------------------------------*/
-/* SEO - Strip slashes from the display of the website/page title */
-/*-----------------------------------------------------------------------------------*/
+if ( ! function_exists( 'wf_add_blog_name_to_title' ) ) {
+/**
+ * Add the site title to the woo_title() text.
+ * @since  6.0.0
+ * @param  string $title     Existing title value.
+ * @param  string $sep       Separator string.
+ * @param  string $raw_title Raw title value.
+ * @return string            Modified title.
+ */
+function wf_add_blog_name_to_title ( $title, $sep, $raw_title ) {
+	$site_title = get_bloginfo( 'name' );
+	$title .= apply_filters( 'wf_add_blog_name_to_title', $site_title );
+	return $title;
+} // End wf_add_blog_name_to_title()
+}
 
-add_filter( 'woo_title', 'stripslashes', 10 );
-add_filter( 'wp_title', 'stripslashes', 10 );
-add_filter( 'admin_title', 'stripslashes', 10 );
+if ( ! function_exists( 'wf_maybe_add_page_number_to_title' ) ) {
+/**
+ * Maybe add the page number, if paginating, to the woo_title() text.
+ * @since  6.0.0
+ * @param  string $title     Existing title value.
+ * @param  string $sep       Separator string.
+ * @param  string $raw_title Raw title value.
+ * @return string            Modified title.
+ */
+function wf_maybe_add_page_number_to_title ( $title, $sep, $raw_title ) {
+	if ( is_paged() ) {
+		$page = intval( get_query_var( 'page' ) );
+		$paged = intval( get_query_var( 'paged' ) );
+		$page_number = $paged;
+		if ( 0 < $page ) {
+			$page_number = $page;
+		}
+
+		$title .= apply_filters( 'wf_maybe_add_page_number_to_title', ' ' . $sep . ' ' . sprintf( __( 'Page %s', 'woothemes' ), intval( $page_number ) ) );
+	}
+	return $title;
+} // End wf_maybe_add_page_number_to_title()
+}
+
+if ( ! class_exists( 'WPSEO_Frontend' ) && ! defined( 'WPSEO_VERSION' ) ) {
+	add_filter( 'woo_title', 'wf_add_blog_name_to_title', 10, 3 );
+	add_filter( 'woo_title', 'wf_maybe_add_page_number_to_title', 10, 3 );
+}
 
 /*-----------------------------------------------------------------------------------*/
 /* woo_meta() */
 /*-----------------------------------------------------------------------------------*/
 
-
-function woo_meta(){
-		global $post;
-		global $wpdb;
-		if(!empty($post)){
-			$post_id = $post->ID;
-		}
-
-		// Basic Output
-		echo '<meta http-equiv="Content-Type" content="'. get_bloginfo( 'html_type' ) .'; charset='. get_bloginfo( 'charset' ) .'" />' . "\n";
-
-		// Under SETTIGNS > PRIVACY in the WordPress backend
-		if ( get_option( 'blog_public') == 0 ) { return; }
-
-		//3rd Party Plugins
-		$use_third_party_data = false;
-		if(get_option( 'seo_woo_use_third_party_data') == 'true'){
-			$use_third_party_data = true;
-		}
-
-		if(
-			(
-			class_exists( 'All_in_One_SEO_Pack') ||
-    		class_exists( 'Headspace_Plugin') ||
-    		class_exists( 'WPSEO_Admin' ) ||
-    		class_exists( 'WPSEO_Frontend' )
-    		)
-		&& ( $use_third_party_data == true ) ) { return; }
-
-		// Robots
-		if (
-			! class_exists( 'All_in_One_SEO_Pack') &&
-    		! class_exists( 'Headspace_Plugin') &&
-    		! class_exists( 'WPSEO_Admin' ) &&
-    		! class_exists( 'WPSEO_Frontend' )
-		) {
-			$index = 'index';
-			$follow = 'follow';
-
-			if ( is_category() && get_option( 'seo_woo_meta_indexing_category') != 'true' ) { $index = 'noindex'; }
-			elseif ( is_tag() && get_option( 'seo_woo_meta_indexing_tag') != 'true') { $index = 'noindex'; }
-			elseif ( is_post_type_archive() && get_option( 'seo_woo_meta_indexing_posttype') != 'true' ) { $index = 'noindex'; }
-			elseif ( is_tax() && get_option( 'seo_woo_meta_indexing_taxonomy') != 'true' ) { $index = 'noindex'; }
-			elseif ( is_search() && get_option( 'seo_woo_meta_indexing_search') != 'true' ) { $index = 'noindex'; }
-			elseif ( is_author() && get_option( 'seo_woo_meta_indexing_author') != 'true') { $index = 'noindex'; }
-			elseif ( is_date() && get_option( 'seo_woo_meta_indexing_date') != 'true') { $index = 'noindex'; }
-
-			// Set to nofollow
-			if ( get_option( 'seo_woo_meta_single_follow') == 'true' )
-				$follow = 'nofollow';
-
-			// Set individual post/page to follow/unfollow
-			if ( is_singular() ) {
-				if ( $follow == 'follow' AND get_post_meta($post->ID,'seo_follow',true) == 'true')
-					$follow = 'nofollow';
-				elseif ( $follow == 'nofollow' AND get_post_meta($post->ID,'seo_follow',true) == 'true')
-					$follow = 'follow';
-			}
-
-			if(is_singular() && get_post_meta($post->ID,'seo_noindex',true) == 'true') { $index = 'noindex';  }
-
-			echo '<meta name="robots" content="'. $index .', '. $follow .'" />' . "\n";
-		}
-
-		/* Description */
-		$description = '';
-
-		$home_desc_option = get_option( 'seo_woo_meta_home_desc' );
-		$singular_desc_option = get_option( 'seo_woo_meta_single_desc' );
-
-		//Check if there is a custom value added to post meta
-		$wooseo_desc = get_post_meta($post->ID,'seo_description',true); // WooSEO
-		$aio_desc = get_post_meta($post->ID,'_aioseop_description',true); // All-in-One SEO Pack
-		$headspace_desc = get_post_meta($post->ID,'_headspace_description',true); // Headspace SEO
-		$wpseo_desc = get_post_meta($post->ID,'_yoast_wpseo_metadesc',true); // WordPress SEO
-
-		//Singular setup
-		if(!empty($aio_desc) AND $use_third_party_data) {
-			$singular_desc_option = 'aioseo';
-		} elseif(!empty($headspace_desc) AND $use_third_party_data) {
-			$singular_desc_option = 'headspace';
-		} elseif( ! empty( $wpseo_desc ) AND $use_third_party_data) {
-			$singular_desc_option = 'wpseo';
-		}
-
-
-		if(is_home() OR is_front_page()){
-			switch($home_desc_option){
-				case 'a': $description = '';
-				break;
-				case 'b': $description = get_bloginfo( 'description' );
-				break;
-				case 'c': $description = get_option( 'seo_woo_meta_home_desc_custom' );
-				break;
-			}
-		}
-		elseif(is_singular()){
-
-			switch($singular_desc_option){
-				case 'a': $description = '';
-				break;
-				case 'b': $description = trim(strip_tags($wooseo_desc));
-				break;
-				case 'c':
-
-    				if(is_single()){
-    					 $posts = get_posts( "p=$post_id" );
-    				}
-    				if(is_page()){
-    					 $posts = get_posts( "page_id=$post_id&post_type=page" );
-    				}
-					foreach($posts as $post){
-   						setup_postdata($post);
-						$post_content =  get_the_excerpt();
-						if(empty($post_content)){
-							// $post_content = get_the_content();
-							$post_content = strip_tags( strip_shortcodes( $post->post_content ) );
-						}
-					}
-					// $post_content = htmlentities(trim(strip_tags(strip_shortcodes($post_content))), ENT_QUOTES, 'UTF-8' ); // Replaced with line below to accommodate special characters. // 2010-11-15.
-					// $post_content = html_entity_decode(trim(strip_tags(strip_shortcodes($post_content))), ENT_QUOTES, 'UTF-8' ); // Replaced to fix PHP4 compatibility issue. // 2010-12-09.
-					// $post_content = utf8_decode( trim( strip_tags( strip_shortcodes( $post_content ) ) ) );
-					// $post_content = html_entity_decode( trim( strip_tags( strip_shortcodes( $post_content ) ) ) );
-					// $post_content = esc_html( htmlspecialchars ( strip_shortcodes( $post_content ) ) );
-
-					$post_content = esc_attr( strip_tags( strip_shortcodes( $post_content ) ) );
-
-					$description = woo_text_trim($post_content,30);
-
-				break;
-				case 'aioseo':  $description = $aio_desc; // All-in-One Description
-				break;
-				case 'headspace':  $description = $headspace_desc; // Headspace Description
-				break;
-				case 'wpseo':  $description = $wpseo_desc; // WordPress SEO Description
-				break;
-
-			}
-		}
-
-		if(empty($description) AND get_option( 'seo_woo_meta_single_desc_sitewide') == 'true'){
-			$description = get_option( 'seo_woo_meta_single_desc_custom' );
-		}
-
-
-		// $description = htmlspecialchars($description, ENT_QUOTES, 'UTF-8' ); // Replaced with line below to accommodate special characters. // 2010-11-15.
-		$description = esc_attr( $description );
-		$description = stripslashes($description);
-
-		// Faux-htmlentities using an array of key => value pairs.
-		// TO DO: Clean-up and move to a re-usable function.
-		$faux_htmlentities = array(
-								'& ' => '&amp; ',
-								'<' => '&lt;',
-								'>' => '&gt;'
-							 );
-
-		foreach ( $faux_htmlentities as $old => $new ) {
-
-			$description = str_replace( $old, $new, $description );
-
-		} // End FOREACH Loop
-
-		if(!empty($description)){
-			echo '<meta name="description" content="'.$description.'" />' . "\n";
-		}
-
-		/* Keywords */
-		$keywords = '';
-
-		$home_key_option = get_option( 'seo_woo_meta_home_key' );
-		$singular_key_option = get_option( 'seo_woo_meta_single_key' );
-
-		//Check if there is a custom value added to post meta
-		$wooseo_keywords = get_post_meta($post->ID,'seo_keywords',true); // WooSEO
-		$aio_keywords = get_post_meta($post->ID,'_aioseop_keywords',true); // All-in-One SEO Pack
-		$headspace_keywords = get_post_meta($post->ID,'_headspace_keywords',true); // Headspace SEO
-		$wpseo_keywords = get_post_meta($post->ID,'_yoast_wpseo_focuskw',true); // WordPress SEO
-
-		//Singular setup
-
-		if(!empty($aio_keywords) AND $use_third_party_data) {
-			$singular_key_option = 'aioseo';
-		} elseif(!empty($headspace_keywords) AND $use_third_party_data) {
-			$singular_key_option = 'headspace';
-		} elseif( ! empty( $wpseo_keywords ) AND $use_third_party_data) {
-			$singular_key_option = 'wpseo';
-		}
-
-		if(is_home() OR is_front_page()){
-			switch($home_key_option){
-				case 'a': $keywords = '';
-				break;
-				case 'c': $keywords = get_option( 'seo_woo_meta_home_key_custom' );
-				break;
-			}
-		}
-		elseif(is_singular()){
-
-			switch($singular_key_option){
-				case 'a': $keywords = '';
-				break;
-				case 'b': $keywords = $wooseo_keywords;
-				break;
-				case 'c':
-
-					$the_keywords = array();
-					//Tags
-					if(get_the_tags($post->ID)){
-						foreach(get_the_tags($post->ID) as $tag) {
-							$tag_name = $tag->name;
-							$the_keywords[] = strtolower($tag_name);
-						}
-					}
-					//Cats
-					if(get_the_category($post->ID)){
-						foreach(get_the_category($post->ID) as $cat) {
-							$cat_name = $cat->name;
-							$the_keywords[] = strtolower($cat_name);
-						}
-					}
-					//Other Taxonomies
-					$all_taxonomies = get_taxonomies();
-					$addon_taxonomies = array();
-					if(!empty($all_taxonomies)){
-						foreach($all_taxonomies as $key => $taxonomies){
-							if(	$taxonomies != 'category' AND
-								$taxonomies != 'post_tag' AND
-								$taxonomies != 'nav_menu' AND
-								$taxonomies != 'link_category'){
-								$addon_taxonomies[] = $taxonomies;
-							}
-						}
-					}
-					$addon_terms = array();
-					if(!empty($addon_taxonomies)){
-						foreach($addon_taxonomies as $taxonomies){
-							$addon_terms[] = get_the_terms($post->ID, $taxonomies);
-						}
-					}
-					if(!empty($addon_terms)){
-						 foreach($addon_terms as $addon){
-						 	if(!empty($addon)){
-						 		foreach($addon as $term){
-						 			$the_keywords[] = strtolower($term->name);
-						 		}
-						 	}
-						 }
-					}
-					$keywords = implode( ",",$the_keywords);
-				break;
-				case 'aioseo':  $keywords = $aio_keywords; // All-in-One Title
-				break;
-				case 'headspace':  $keywords = $headspace_keywords; // Headspace Title
-				break;
-				case 'wpseo':  $keywords = $wpseo_keywords; // Headspace Title
-				break;
-				}
-		}
-
-		if(empty($keywords) AND get_option( 'seo_woo_meta_single_key_sitewide') == 'true'){
-			$keywords = get_option( 'seo_woo_meta_single_key_custom' );
-		}
-
-		$keywords = htmlspecialchars($keywords, ENT_QUOTES, 'UTF-8' );
-		$keywords = stripslashes($keywords);
-
-
-		if(!empty($keywords)){
-			echo '<meta name="keywords" content="'.$keywords.'" />' . "\n";
-		}
-
-}
-
-
-//Add Post Custom Settings
-add_action( 'admin_head','seo_add_custom' );
-
-function seo_add_custom() {
-
-		$seo_template = array();
-
-		$seo_woo_wp_title = get_option( 'seo_woo_wp_title' );
-		$seo_woo_meta_single_desc = get_option( 'seo_woo_meta_single_desc' );
-		$seo_woo_meta_single_key = get_option( 'seo_woo_meta_single_key' );
-
-		// a = off
-		if( $seo_woo_wp_title != 'true' OR $seo_woo_meta_single_desc == 'a' OR $seo_woo_meta_single_key == 'a') {
-
-			$output = "";
-			if ( $seo_woo_wp_title != 'true' )
-				$output .= "Custom Page Titles, ";
-			if ( $seo_woo_meta_single_desc == 'a' )
-				$output .= "Custom Descriptions, ";
-			if ( $seo_woo_meta_single_key == 'a' )
-				$output .= "Custom Keywords";
-
-			$output = rtrim($output, ", " );
-
-			$desc = 'Additional SEO custom fields available: <strong>'.$output.'</strong>. Go to <a href="' . admin_url( 'admin.php?page=woothemes_seo' ) . '">SEO Settings</a> page to activate.';
-
-		} else {
-			$desc = 'Go to <a href="'.admin_url( 'admin.php?page=woothemes_seo').'">SEO Settings</a> page for more SEO options.';
-		}
-
-		$seo_template[] = array (	"name"  => "seo_info_1",
-										"std" => "",
-										"label" => "SEO ",
-										"type" => "info",
-										"desc" => $desc);
-
-		// Change checkbox depending on "Add meta for Posts & Pages to 'follow' by default" checkbox value.
-
-		$followstatus = get_option( 'seo_woo_meta_single_follow' );
-
-		if ( $followstatus == "true" ) {
-
-			$seo_template[] = array (	"name"  => "seo_follow",
-											"std" => 'false',
-											"label" => "SEO - Set follow",
-											"type" => "checkbox",
-											"desc" => "Make links from this post/page <strong>followable</strong> by search engines." );
-
-		} else {
-
-			$seo_template[] = array (	"name"  => "seo_follow",
-											"std" => 'false',
-											"label" => "SEO - Set nofollow",
-											"type" => "checkbox",
-											"desc" => "Make links from this post/page <strong>not followable</strong> by search engines." );
-
-		} // End IF Statement
-
-		$seo_template[] = array (	"name"  => "seo_noindex",
-										"std" => "false",
-										"label" => "SEO - Noindex",
-										"type" => "checkbox",
-										"desc" => "Set the Page/Post to not be indexed by a search engines." );
-
-		if( get_option( 'seo_woo_wp_title') == 'true'){
-		$seo_template[] = array (	"name"  => "seo_title",
-										"std" => "",
-										"label" => "SEO - Custom Page Title",
-										"type" => "text",
-										"desc" => "Add a custom title for this post/page." );
-		}
-
-		if( get_option( 'seo_woo_meta_single_desc') == 'b'){
-		$seo_template[] = array (	"name"  => "seo_description",
-										"std" => "",
-										"label" => "SEO - Custom Description",
-										"type" => "textarea",
-										"desc" => "Add a custom meta description for this post/page." );
-		}
-
-		if( get_option( 'seo_woo_meta_single_key') == 'b'){
-		$seo_template[] = array (	"name"  => "seo_keywords",
-										"std" => "",
-										"label" => "SEO - Custom Keywords",
-										"type" => "text",
-										"desc" => "Add a custom meta keywords for this post/page. (comma seperated)" );
-		}
-
-		//3rd Party Plugins
-		if(get_option( 'seo_woo_use_third_party_data') == 'true'){
-			$use_third_party_data = true;
-		} else {
-			$use_third_party_data = false;
-		}
-
-		if( (
-			class_exists( 'All_in_One_SEO_Pack') ||
-    		class_exists( 'Headspace_Plugin') ||
-    		class_exists( 'WPSEO_Admin' ) ||
-    		class_exists( 'WPSEO_Frontend' )
-			) AND
-		( $use_third_party_data == true )) {
-			delete_option( 'woo_custom_seo_template' );
-		}
-		else {
-
-			update_option( 'woo_custom_seo_template',$seo_template);
-
-		}
-
+if ( ! function_exists( 'woo_meta' ) ) {
+/**
+ * Display meta tags.
+ * @since  1.0.0
+ * @return void
+ */
+function woo_meta () {
+	echo '<meta http-equiv="Content-Type" content="'. esc_attr( get_bloginfo( 'html_type' ) ) . '; charset=' . esc_attr( get_bloginfo( 'charset' ) ) . '" />' . "\n";
+
+	do_action( 'woo_meta' );
+} // End woo_meta()
 }
 
 /*-----------------------------------------------------------------------------------*/
 /* Woo Text Trimmer */
 /*-----------------------------------------------------------------------------------*/
 
-if ( !function_exists( 'woo_text_trim') ) {
-	function woo_text_trim($text, $words = 50)
-	{
+if ( ! function_exists( 'woo_text_trim' ) ) {
+	function woo_text_trim( $text, $words = 50 ) {
 		$matches = preg_split( "/\s+/", $text, $words + 1);
 		$sz = count($matches);
 		if ($sz > $words)
@@ -2072,7 +1371,7 @@ if ( !function_exists( 'woo_text_trim') ) {
 			return implode( ' ',$matches)." ...";
 		}
 		return $text;
-	}
+	} // End woo_text_trim()
 }
 
 /*-----------------------------------------------------------------------------------*/
@@ -2084,293 +1383,742 @@ if ( !function_exists( 'woo_text_trim') ) {
 /*-----------------------------------------------------------------------------------*/
 
 // Available Google webfont names
-$google_fonts = array(	array( 'name' => "Cantarell", 'variant' => ':r,b,i,bi'),
-						array( 'name' => "Cardo", 'variant' => ''),
-						array( 'name' => "Crimson Text", 'variant' => ''),
-						array( 'name' => "Droid Sans", 'variant' => ':r,b'),
-						array( 'name' => "Droid Sans Mono", 'variant' => ''),
-						array( 'name' => "Droid Serif", 'variant' => ':r,b,i,bi'),
-						array( 'name' => "IM Fell DW Pica", 'variant' => ':r,i'),
-						array( 'name' => "Inconsolata", 'variant' => ''),
-						array( 'name' => "Josefin Sans", 'variant' => ':400,400italic,700,700italic'),
-						array( 'name' => "Josefin Slab", 'variant' => ':r,b,i,bi'),
-						array( 'name' => "Lobster", 'variant' => ''),
-						array( 'name' => "Molengo", 'variant' => ''),
-						array( 'name' => "Nobile", 'variant' => ':r,b,i,bi'),
-						array( 'name' => "OFL Sorts Mill Goudy TT", 'variant' => ':r,i'),
-						array( 'name' => "Old Standard TT", 'variant' => ':r,b,i'),
-						array( 'name' => "Reenie Beanie", 'variant' => ''),
-						array( 'name' => "Tangerine", 'variant' => ':r,b'),
-						array( 'name' => "Vollkorn", 'variant' => ':r,b'),
-						array( 'name' => "Yanone Kaffeesatz", 'variant' => ':r,b'),
-						array( 'name' => "Cuprum", 'variant' => ''),
-						array( 'name' => "Neucha", 'variant' => ''),
-						array( 'name' => "Neuton", 'variant' => ''),
-						array( 'name' => "PT Sans", 'variant' => ':r,b,i,bi'),
-						array( 'name' => "PT Sans Caption", 'variant' => ':r,b'),
-						array( 'name' => "PT Sans Narrow", 'variant' => ':r,b'),
-						array( 'name' => "Philosopher", 'variant' => ''),
-						array( 'name' => "Allerta", 'variant' => ''),
-						array( 'name' => "Allerta Stencil", 'variant' => ''),
-						array( 'name' => "Arimo", 'variant' => ':r,b,i,bi'),
-						array( 'name' => "Arvo", 'variant' => ':r,b,i,bi'),
-						array( 'name' => "Bentham", 'variant' => ''),
-						array( 'name' => "Coda", 'variant' => ':800'),
-						array( 'name' => "Cousine", 'variant' => ''),
-						array( 'name' => "Covered By Your Grace", 'variant' => ''),
-			 			array( 'name' => "Geo", 'variant' => ''),
-						array( 'name' => "Just Me Again Down Here", 'variant' => ''),
-						array( 'name' => "Puritan", 'variant' => ':r,b,i,bi'),
-						array( 'name' => "Raleway", 'variant' => ':100'),
-						array( 'name' => "Tinos", 'variant' => ':r,b,i,bi'),
-						array( 'name' => "UnifrakturCook", 'variant' => ':bold'),
-						array( 'name' => "UnifrakturMaguntia", 'variant' => ''),
-						array( 'name' => "Mountains of Christmas", 'variant' => ''),
-						array( 'name' => "Lato", 'variant' => ':400,700,400italic'),
-						array( 'name' => "Orbitron", 'variant' => ':r,b,i,bi'),
-						array( 'name' => "Allan", 'variant' => ':bold'),
-						array( 'name' => "Anonymous Pro", 'variant' => ':r,b,i,bi'),
-						array( 'name' => "Copse", 'variant' => ''),
-						array( 'name' => "Kenia", 'variant' => ''),
-						array( 'name' => "Ubuntu", 'variant' => ':r,b,i,bi'),
-						array( 'name' => "Vibur", 'variant' => ''),
-						array( 'name' => "Sniglet", 'variant' => ':800'),
-						array( 'name' => "Syncopate", 'variant' => ''),
-						array( 'name' => "Cabin", 'variant' => ':400,400italic,700,700italic,'),
-						array( 'name' => "Merriweather", 'variant' => ''),
-						array( 'name' => "Maiden Orange", 'variant' => ''),
-						array( 'name' => "Just Another Hand", 'variant' => ''),
-						array( 'name' => "Kristi", 'variant' => ''),
-						array( 'name' => "Corben", 'variant' => ':b'),
-						array( 'name' => "Gruppo", 'variant' => ''),
-						array( 'name' => "Buda", 'variant' => ':light'),
-						array( 'name' => "Lekton", 'variant' => ''),
-						array( 'name' => "Luckiest Guy", 'variant' => ''),
-						array( 'name' => "Crushed", 'variant' => ''),
-						array( 'name' => "Chewy", 'variant' => ''),
-						array( 'name' => "Coming Soon", 'variant' => ''),
-						array( 'name' => "Crafty Girls", 'variant' => ''),
-						array( 'name' => "Fontdiner Swanky", 'variant' => ''),
-						array( 'name' => "Permanent Marker", 'variant' => ''),
-						array( 'name' => "Rock Salt", 'variant' => ''),
-						array( 'name' => "Sunshiney", 'variant' => ''),
-						array( 'name' => "Unkempt", 'variant' => ''),
-						array( 'name' => "Calligraffitti", 'variant' => ''),
-						array( 'name' => "Cherry Cream Soda", 'variant' => ''),
-						array( 'name' => "Homemade Apple", 'variant' => ''),
-						array( 'name' => "Irish Growler", 'variant' => ''),
-						array( 'name' => "Kranky", 'variant' => ''),
-						array( 'name' => "Schoolbell", 'variant' => ''),
-						array( 'name' => "Slackey", 'variant' => ''),
-						array( 'name' => "Walter Turncoat", 'variant' => ''),
-						array( 'name' => "Radley", 'variant' => ''),
-						array( 'name' => "Meddon", 'variant' => ''),
-						array( 'name' => "Kreon", 'variant' => ':r,b'),
-						array( 'name' => "Dancing Script", 'variant' => ''),
-						array( 'name' => "Goudy Bookletter 1911", 'variant' => ''),
-						array( 'name' => "PT Serif Caption", 'variant' => ':r,i'),
-						array( 'name' => "PT Serif", 'variant' => ':r,b,i,bi'),
-						array( 'name' => "Astloch", 'variant' => ':b'),
-						array( 'name' => "Bevan", 'variant' => ''),
-						array( 'name' => "Anton", 'variant' => ''),
-						array( 'name' => "Expletus Sans", 'variant' => ':b'),
-						array( 'name' => "VT323", 'variant' => ''),
-						array( 'name' => "Pacifico", 'variant' => ''),
-						array( 'name' => "Candal", 'variant' => ''),
-						array( 'name' => "Architects Daughter", 'variant' => ''),
-						array( 'name' => "Indie Flower", 'variant' => ''),
-						array( 'name' => "League Script", 'variant' => ''),
-						array( 'name' => "Cabin Sketch", 'variant' => ':b'),
-						array( 'name' => "Quattrocento", 'variant' => ''),
-						array( 'name' => "Amaranth", 'variant' => ''),
-						array( 'name' => "Irish Grover", 'variant' => ''),
-						array( 'name' => "Oswald", 'variant' => ''),
-						array( 'name' => "EB Garamond", 'variant' => ''),
-						array( 'name' => "Nova Round", 'variant' => ''),
-						array( 'name' => "Nova Slim", 'variant' => ''),
-						array( 'name' => "Nova Script", 'variant' => ''),
-						array( 'name' => "Nova Cut", 'variant' => ''),
-						array( 'name' => "Nova Mono", 'variant' => ''),
-						array( 'name' => "Nova Oval", 'variant' => ''),
-						array( 'name' => "Nova Flat", 'variant' => ''),
-						array( 'name' => "Terminal Dosis Light", 'variant' => ''),
-						array( 'name' => "Michroma", 'variant' => ''),
-						array( 'name' => "Miltonian", 'variant' => ''),
-						array( 'name' => "Miltonian Tattoo", 'variant' => ''),
-						array( 'name' => "Annie Use Your Telescope", 'variant' => ''),
-						array( 'name' => "Dawning of a New Day", 'variant' => ''),
-						array( 'name' => "Sue Ellen Francisco", 'variant' => ''),
-						array( 'name' => "Waiting for the Sunrise", 'variant' => ''),
-						array( 'name' => "Special Elite", 'variant' => ''),
-						array( 'name' => "Quattrocento Sans", 'variant' => ''),
-						array( 'name' => "Smythe", 'variant' => ''),
-						array( 'name' => "The Girl Next Door", 'variant' => ''),
-						array( 'name' => "Aclonica", 'variant' => ''),
-						array( 'name' => "News Cycle", 'variant' => ''),
-						array( 'name' => "Damion", 'variant' => ''),
-						array( 'name' => "Wallpoet", 'variant' => ''),
-						array( 'name' => "Over the Rainbow", 'variant' => ''),
-						array( 'name' => "MedievalSharp", 'variant' => ''),
-						array( 'name' => "Six Caps", 'variant' => ''),
-						array( 'name' => "Swanky and Moo Moo", 'variant' => ''),
-						array( 'name' => "Bigshot One", 'variant' => ''),
-						array( 'name' => "Francois One", 'variant' => ''),
-						array( 'name' => "Sigmar One", 'variant' => ''),
-						array( 'name' => "Carter One", 'variant' => ''),
-						array( 'name' => "Holtwood One SC", 'variant' => ''),
-						array( 'name' => "Paytone One", 'variant' => ''),
-						array( 'name' => "Monofett", 'variant' => ''),
-						array( 'name' => "Rokkitt", 'variant' => ':400,700'),
-						array( 'name' => "Megrim", 'variant' => ''),
-						array( 'name' => "Judson", 'variant' => ':r,ri,b'),
-						array( 'name' => "Didact Gothic", 'variant' => ''),
-						array( 'name' => "Play", 'variant' => ':r,b'),
-						array( 'name' => "Ultra", 'variant' => ''),
-						array( 'name' => "Metrophobic", 'variant' => ''),
-						array( 'name' => "Mako", 'variant' => ''),
-						array( 'name' => "Shanti", 'variant' => ''),
-						array( 'name' => "Caudex", 'variant' => ':r,b,i,bi'),
-						array( 'name' => "Jura", 'variant' => ''),
-						array( 'name' => "Ruslan Display", 'variant' => ''),
-						array( 'name' => "Brawler", 'variant' => ''),
-						array( 'name' => "Nunito", 'variant' => ''),
-						array( 'name' => "Wire One", 'variant' => ''),
-						array( 'name' => "Podkova", 'variant' => ''),
-						array( 'name' => "Muli", 'variant' => ''),
-						array( 'name' => "Maven Pro", 'variant' => ''),
-						array( 'name' => "Tenor Sans", 'variant' => ''),
-						array( 'name' => "Limelight", 'variant' => ''),
-						array( 'name' => "Playfair Display", 'variant' => ''),
-						array( 'name' => "Artifika", 'variant' => ''),
-						array( 'name' => "Lora", 'variant' => ''),
-						array( 'name' => "Kameron", 'variant' => ':r,b'),
-						array( 'name' => "Cedarville Cursive", 'variant' => ''),
-						array( 'name' => "Zeyada", 'variant' => ''),
-						array( 'name' => "La Belle Aurore", 'variant' => ''),
-						array( 'name' => "Shadows Into Light", 'variant' => ''),
-						array( 'name' => "Lobster Two", 'variant' => ':r,b,i,bi'),
-						array( 'name' => "Nixie One", 'variant' => ''),
-						array( 'name' => "Redressed", 'variant' => ''),
-						array( 'name' => "Bangers", 'variant' => ''),
-						array( 'name' => "Open Sans Condensed", 'variant' => ':300,300italic'),
-						array( 'name' => "Open Sans", 'variant' => ':r,i,b,bi'),
-						array( 'name' => "Varela", 'variant' => ''),
-						array( 'name' => "Goblin One", 'variant' => ''),
-						array( 'name' => "Asset", 'variant' => ''),
-						array( 'name' => "Gravitas One", 'variant' => ''),
-						array( 'name' => "Hammersmith One", 'variant' => ''),
-						array( 'name' => "Stardos Stencil", 'variant' => ''),
-						array( 'name' => "Love Ya Like A Sister", 'variant' => ''),
-						array( 'name' => "Loved by the King", 'variant' => ''),
-						array( 'name' => "Bowlby One SC", 'variant' => ''),
-						array( 'name' => "Forum", 'variant' => ''),
-						array( 'name' => "Patrick Hand", 'variant' => ''),
-						array( 'name' => "Varela Round", 'variant' => ''),
-						array( 'name' => "Yeseva One", 'variant' => ''),
-						array( 'name' => "Give You Glory", 'variant' => ''),
-						array( 'name' => "Modern Antiqua", 'variant' => ''),
-						array( 'name' => "Bowlby One", 'variant' => ''),
-						array( 'name' => "Tienne", 'variant' => ''),
-						array( 'name' => "Istok Web", 'variant' => ':r,b,i,bi'),
-						array( 'name' => "Yellowtail", 'variant' => ''),
-						array( 'name' => "Pompiere", 'variant' => ''),
-						array( 'name' => "Unna", 'variant' => ''),
-						array( 'name' => "Rosario", 'variant' => ''),
-						array( 'name' => "Leckerli One", 'variant' => ''),
-						array( 'name' => "Snippet", 'variant' => ''),
-						array( 'name' => "Ovo", 'variant' => ''),
-						array( 'name' => "IM Fell English", 'variant' => ':r,i'),
-						array( 'name' => "IM Fell English SC", 'variant' => ''),
-						array( 'name' => "Gloria Hallelujah", 'variant' => ''),
-						array( 'name' => "Kelly Slab", 'variant' => ''),
-						array( 'name' => "Black Ops One", 'variant' => ''),
-						array( 'name' => "Carme", 'variant' => ''),
-						array( 'name' => "Aubrey", 'variant' => ''),
-						array( 'name' => "Federo", 'variant' => ''),
-						array( 'name' => "Delius", 'variant' => ''),
-						array( 'name' => "Rochester", 'variant' => ''),
-						array( 'name' => "Rationale", 'variant' => ''),
-						array( 'name' => "Abel", 'variant' => ''),
-						array( 'name' => "Marvel", 'variant' => ':r,b,i,bi'),
-						array( 'name' => "Actor", 'variant' => ''),
-						array( 'name' => "Delius Swash Caps", 'variant' => ''),
-						array( 'name' => "Smokum", 'variant' => ''),
-						array( 'name' => "Tulpen One", 'variant' => ''),
-						array( 'name' => "Coustard", 'variant' => ':r,b'),
-						array( 'name' => "Andika", 'variant' => ''),
-						array( 'name' => "Alice", 'variant' => ''),
-						array( 'name' => "Questrial", 'variant' => ''),
-						array( 'name' => "Comfortaa", 'variant' => ':r,b'),
-						array( 'name' => "Geostar", 'variant' => ''),
-						array( 'name' => "Geostar Fill", 'variant' => ''),
-						array( 'name' => "Volkhov", 'variant' => ''),
-						array( 'name' => "Voltaire", 'variant' => ''),
-						array( 'name' => "Montez", 'variant' => ''),
-						array( 'name' => "Short Stack", 'variant' => ''),
-						array( 'name' => "Vidaloka", 'variant' => ''),
-						array( 'name' => "Aldrich", 'variant' => ''),
-						array( 'name' => "Numans", 'variant' => ''),
-						array( 'name' => "Days One", 'variant' => ''),
-						array( 'name' => "Gentium Book Basic", 'variant' => ''),
-						array( 'name' => "Monoton", 'variant' => ''),
-						array( 'name' => "Alike", 'variant' => ''),
-						array( 'name' => "Delius Unicase", 'variant' => ''),
-						array( 'name' => "Abril Fatface", 'variant' => ''),
-						array( 'name' => "Dorsa", 'variant' => ''),
-						array( 'name' => "Antic", 'variant' => ''),
-						array( 'name' => "Passero One", 'variant' => ''),
-						array( 'name' => "Fanwood Text", 'variant' => ''),
-						array( 'name' => "Prociono", 'variant' => ''),
-						array( 'name' => "Merienda One", 'variant' => ''),
-						array( 'name' => "Changa One", 'variant' => ''),
-						array( 'name' => "Julee", 'variant' => ''),
-						array( 'name' => "Prata", 'variant' => ''),
-						array( 'name' => "Adamina", 'variant' => ''),
-						array( 'name' => "Sorts Mill Goudy", 'variant' => ''),
-						array( 'name' => "Terminal Dosis", 'variant' => ''),
-						array( 'name' => "Sansita One", 'variant' => ''),
-						array( 'name' => "Chivo", 'variant' => ''),
-						array( 'name' => "Spinnaker", 'variant' => ''),
-						array( 'name' => "Poller One", 'variant' => ''),
-						array( 'name' => "Alike Angular", 'variant' => ''),
-						array( 'name' => "Gochi Hand", 'variant' => ''),
-						array( 'name' => "Poly", 'variant' => ''),
-						array( 'name' => "Andada", 'variant' => ''),
-						array( 'name' => "Federant", 'variant' => ''),
-						array( 'name' => "Ubuntu Condensed", 'variant' => ''),
-						array( 'name' => "Ubuntu Mono", 'variant' => ''),
-						array( 'name' => "Sancreek", 'variant' => ''),
-						array( 'name' => "Coda", 'variant' => ''),
-						array( 'name' => "Rancho", 'variant' => ''),
-						array( 'name' => "Satisfy", 'variant' => ''),
-						array( 'name' => "Pinyon Script", 'variant' => ''),
-						array( 'name' => "Vast Shadow", 'variant' => ''),
-						array( 'name' => "Marck Script", 'variant' => ''),
-						array( 'name' => "Salsa", 'variant' => ''),
-						array( 'name' => "Amatic SC", 'variant' => ''),
-						array( 'name' => "Quicksand", 'variant' => ''),
-						array( 'name' => "Linden Hill", 'variant' => ''),
-						array( 'name' => "Corben", 'variant' => ''),
-						array( 'name' => "Creepster Caps", 'variant' => ''),
-						array( 'name' => "Butcherman Caps", 'variant' => ''),
-						array( 'name' => "Eater Caps", 'variant' => ''),
-						array( 'name' => "Nosifer Caps", 'variant' => ''),
-						array( 'name' => "Atomic Age", 'variant' => ''),
-						array( 'name' => "Contrail One", 'variant' => ''),
-						array( 'name' => "Jockey One", 'variant' => ''),
-						array( 'name' => "Cabin Sketch", 'variant' => ':r,b'),
-						array( 'name' => "Fjord One", 'variant' => ''),
-						array( 'name' => "Rametto One", 'variant' => ''),
-						array( 'name' => "Mate", 'variant' => ':r,i'),
-						array( 'name' => "Mate SC", 'variant' => ''),
-						array( 'name' => "Arapey", 'variant' => ':r,i'),
-						array( 'name' => "Supermercado One", 'variant' => ''),
-						array( 'name' => "Petrona", 'variant' => ''),
-						array( 'name' => "Lancelot", 'variant' => ''),
-						array( 'name' => "Convergence", 'variant' => ''),
-						array( 'name' => "Bitter", 'variant' => '')
-);
+$GLOBALS['google_fonts'] = wf_get_google_fonts();
 
+/**
+ * Return a filtered array of possible system fonts.
+ * @since  6.0.0
+ * @return array Possible system fonts.
+ */
+function wf_get_system_fonts () {
+	return (array)apply_filters( 'wf_get_system_fonts', array(
+			'Arial, sans-serif' => __( 'Arial', 'woothemes' ),
+			'Verdana, Geneva, sans-serif' => __( 'Verdana', 'woothemes' ),
+			'&quot;Trebuchet MS&quot;, Tahoma, sans-serif' => __( 'Trebuchet', 'woothemes' ),
+			'Georgia, serif' => __( 'Georgia', 'woothemes' ),
+			'&quot;Times New Roman&quot;, serif' => __( 'Times New Roman', 'woothemes' ),
+			'Tahoma, Geneva, Verdana, sans-serif' => __( 'Tahoma', 'woothemes' ),
+			'Palatino, &quot;Palatino Linotype&quot;, serif' => __( 'Palatino', 'woothemes' ),
+			'&quot;Helvetica Neue&quot;, Helvetica, sans-serif' => __( 'Helvetica *', 'woothemes' ),
+			'Calibri, Candara, Segoe, Optima, sans-serif' => __( 'Calibri *', 'woothemes' ),
+			'&quot;Myriad Pro&quot;, Myriad, sans-serif' => __( 'Myriad Pro *', 'woothemes' ),
+			'&quot;Lucida Grande&quot;, &quot;Lucida Sans Unicode&quot;, &quot;Lucida Sans&quot;, sans-serif' => __( 'Lucida', 'woothemes' ),
+			'&quot;Arial Black&quot;, sans-serif' => __( 'Arial Black', 'woothemes' ),
+			'&quot;Gill Sans&quot;, &quot;Gill Sans MT&quot;, Calibri, sans-serif' => __( 'Gill Sans *', 'woothemes' ),
+			'Geneva, Tahoma, Verdana, sans-serif' => __( 'Geneva *', 'woothemes' ),
+			'Impact, Charcoal, sans-serif' => __( 'Impact', 'woothemes' ),
+			'Courier, &quot;Courier New&quot;, monospace' => __( 'Courier', 'woothemes' ),
+			'&quot;Century Gothic&quot;, sans-serif' => __( 'Century Gothic', 'woothemes' )
+		)
+	);
+} // End wf_get_system_fonts()
+
+/**
+ * Return a filtered array of possible system fonts test cases.
+ * @since  6.0.0
+ * @return array Possible system fonts test cases.
+ */
+function wf_get_system_fonts_test_cases () {
+	// The test case should always correspond to the text before the first comma in the array key.
+	return (array)apply_filters( 'wf_get_system_fonts_test_cases', array(
+			'Arial, sans-serif' => 'Arial',
+			'Verdana, Geneva, sans-serif' => 'Verdana',
+			'&quot;Trebuchet MS&quot;, Tahoma, sans-serif' => 'Trebuchet MS',
+			'Georgia, serif' => 'Georgia',
+			'&quot;Times New Roman&quot;, serif' => 'Times New Roman',
+			'Tahoma, Geneva, Verdana, sans-serif' => 'Tahoma',
+			'Palatino, &quot;Palatino Linotype&quot;, serif' => 'Palatino',
+			'&quot;Helvetica Neue&quot;, Helvetica, sans-serif' => 'Helvetica Neue',
+			'Calibri, Candara, Segoe, Optima, sans-serif' => 'Calibri',
+			'&quot;Myriad Pro&quot;, Myriad, sans-serif' => 'Myriad Pro',
+			'&quot;Lucida Grande&quot;, &quot;Lucida Sans Unicode&quot;, &quot;Lucida Sans&quot;, sans-serif' => 'Lucida Grande',
+			'&quot;Arial Black&quot;, sans-serif' => 'Arial Black',
+			'&quot;Gill Sans&quot;, &quot;Gill Sans MT&quot;, Calibri, sans-serif' => 'Gill Sans',
+			'Geneva, Tahoma, Verdana, sans-serif' => 'Geneva',
+			'Impact, Charcoal, sans-serif' => 'Impact',
+			'Courier, &quot;Courier New&quot;, monospace' => 'Courier',
+			'&quot;Century Gothic&quot;, sans-serif' => 'Century Gothic'
+		)
+	);
+} // End wf_get_system_fonts_test_cases()
+
+/**
+ * Return a filtered array of Google WebFonts.
+ * @since  6.0.0
+ * @return array Google WebFonts.
+ */
+function wf_get_google_fonts () {
+	return (array)apply_filters( 'wf_get_google_fonts', wf_get_google_fonts_store() );
+} // End wf_get_google_fonts()
+
+/**
+ * Return a raw array of Google WebFonts.
+ * @since  6.0.0
+ * @return array Google WebFonts.
+ */
+function wf_get_google_fonts_store () {
+	$google_fonts = array (
+		array( 'name' => 'ABeeZee', 'variant' => ':regular,:italic' ),
+		array( 'name' => 'Abel', 'variant' => ':regular' ),
+		array( 'name' => 'Abril Fatface', 'variant' => ':regular' ),
+		array( 'name' => 'Aclonica', 'variant' => ':regular' ),
+		array( 'name' => 'Acme', 'variant' => ':regular' ),
+		array( 'name' => 'Actor', 'variant' => ':regular' ),
+		array( 'name' => 'Adamina', 'variant' => ':regular' ),
+		array( 'name' => 'Advent Pro', 'variant' => ':100,:200,:300,:regular,:500,:600,:700' ),
+		array( 'name' => 'Aguafina Script', 'variant' => ':regular' ),
+		array( 'name' => 'Akronim', 'variant' => ':regular' ),
+		array( 'name' => 'Aladin', 'variant' => ':regular' ),
+		array( 'name' => 'Aldrich', 'variant' => ':regular' ),
+		array( 'name' => 'Alef', 'variant' => ':regular,:700' ),
+		array( 'name' => 'Alegreya', 'variant' => ':regular,:italic,:700,:700italic,:900,:900italic' ),
+		array( 'name' => 'Alegreya SC', 'variant' => ':regular,:italic,:700,:700italic,:900,:900italic' ),
+		array( 'name' => 'Alegreya Sans', 'variant' => ':100,:100italic,:300,:300italic,:regular,:italic,:500,:500italic,:700,:700italic,:800,:800italic,:900,:900italic' ),
+		array( 'name' => 'Alegreya Sans SC', 'variant' => ':100,:100italic,:300,:300italic,:regular,:italic,:500,:500italic,:700,:700italic,:800,:800italic,:900,:900italic' ),
+		array( 'name' => 'Alex Brush', 'variant' => ':regular' ),
+		array( 'name' => 'Alfa Slab One', 'variant' => ':regular' ),
+		array( 'name' => 'Alice', 'variant' => ':regular' ),
+		array( 'name' => 'Alike', 'variant' => ':regular' ),
+		array( 'name' => 'Alike Angular', 'variant' => ':regular' ),
+		array( 'name' => 'Allan', 'variant' => ':regular,:700' ),
+		array( 'name' => 'Allerta', 'variant' => ':regular' ),
+		array( 'name' => 'Allerta Stencil', 'variant' => ':regular' ),
+		array( 'name' => 'Allura', 'variant' => ':regular' ),
+		array( 'name' => 'Almendra', 'variant' => ':regular,:italic,:700,:700italic' ),
+		array( 'name' => 'Almendra Display', 'variant' => ':regular' ),
+		array( 'name' => 'Almendra SC', 'variant' => ':regular' ),
+		array( 'name' => 'Amarante', 'variant' => ':regular' ),
+		array( 'name' => 'Amaranth', 'variant' => ':regular,:italic,:700,:700italic' ),
+		array( 'name' => 'Amatic SC', 'variant' => ':regular,:700' ),
+		array( 'name' => 'Amethysta', 'variant' => ':regular' ),
+		array( 'name' => 'Anaheim', 'variant' => ':regular' ),
+		array( 'name' => 'Andada', 'variant' => ':regular' ),
+		array( 'name' => 'Andika', 'variant' => ':regular' ),
+		array( 'name' => 'Angkor', 'variant' => ':regular' ),
+		array( 'name' => 'Annie Use Your Telescope', 'variant' => ':regular' ),
+		array( 'name' => 'Anonymous Pro', 'variant' => ':regular,:italic,:700,:700italic' ),
+		array( 'name' => 'Antic', 'variant' => ':regular' ),
+		array( 'name' => 'Antic Didone', 'variant' => ':regular' ),
+		array( 'name' => 'Antic Slab', 'variant' => ':regular' ),
+		array( 'name' => 'Anton', 'variant' => ':regular' ),
+		array( 'name' => 'Arapey', 'variant' => ':regular,:italic' ),
+		array( 'name' => 'Arbutus', 'variant' => ':regular' ),
+		array( 'name' => 'Arbutus Slab', 'variant' => ':regular' ),
+		array( 'name' => 'Architects Daughter', 'variant' => ':regular' ),
+		array( 'name' => 'Archivo Black', 'variant' => ':regular' ),
+		array( 'name' => 'Archivo Narrow', 'variant' => ':regular,:italic,:700,:700italic' ),
+		array( 'name' => 'Arimo', 'variant' => ':regular,:italic,:700,:700italic' ),
+		array( 'name' => 'Arizonia', 'variant' => ':regular' ),
+		array( 'name' => 'Armata', 'variant' => ':regular' ),
+		array( 'name' => 'Artifika', 'variant' => ':regular' ),
+		array( 'name' => 'Arvo', 'variant' => ':regular,:italic,:700,:700italic' ),
+		array( 'name' => 'Asap', 'variant' => ':regular,:italic,:700,:700italic' ),
+		array( 'name' => 'Asset', 'variant' => ':regular' ),
+		array( 'name' => 'Astloch', 'variant' => ':regular,:700' ),
+		array( 'name' => 'Asul', 'variant' => ':regular,:700' ),
+		array( 'name' => 'Atomic Age', 'variant' => ':regular' ),
+		array( 'name' => 'Aubrey', 'variant' => ':regular' ),
+		array( 'name' => 'Audiowide', 'variant' => ':regular' ),
+		array( 'name' => 'Autour One', 'variant' => ':regular' ),
+		array( 'name' => 'Average', 'variant' => ':regular' ),
+		array( 'name' => 'Average Sans', 'variant' => ':regular' ),
+		array( 'name' => 'Averia Gruesa Libre', 'variant' => ':regular' ),
+		array( 'name' => 'Averia Libre', 'variant' => ':300,:300italic,:regular,:italic,:700,:700italic' ),
+		array( 'name' => 'Averia Sans Libre', 'variant' => ':300,:300italic,:regular,:italic,:700,:700italic' ),
+		array( 'name' => 'Averia Serif Libre', 'variant' => ':300,:300italic,:regular,:italic,:700,:700italic' ),
+		array( 'name' => 'Bad Script', 'variant' => ':regular' ),
+		array( 'name' => 'Balthazar', 'variant' => ':regular' ),
+		array( 'name' => 'Bangers', 'variant' => ':regular' ),
+		array( 'name' => 'Basic', 'variant' => ':regular' ),
+		array( 'name' => 'Battambang', 'variant' => ':regular,:700' ),
+		array( 'name' => 'Baumans', 'variant' => ':regular' ),
+		array( 'name' => 'Bayon', 'variant' => ':regular' ),
+		array( 'name' => 'Belgrano', 'variant' => ':regular' ),
+		array( 'name' => 'Belleza', 'variant' => ':regular' ),
+		array( 'name' => 'BenchNine', 'variant' => ':300,:regular,:700' ),
+		array( 'name' => 'Bentham', 'variant' => ':regular' ),
+		array( 'name' => 'Berkshire Swash', 'variant' => ':regular' ),
+		array( 'name' => 'Bevan', 'variant' => ':regular' ),
+		array( 'name' => 'Bigelow Rules', 'variant' => ':regular' ),
+		array( 'name' => 'Bigshot One', 'variant' => ':regular' ),
+		array( 'name' => 'Bilbo', 'variant' => ':regular' ),
+		array( 'name' => 'Bilbo Swash Caps', 'variant' => ':regular' ),
+		array( 'name' => 'Bitter', 'variant' => ':regular,:italic,:700' ),
+		array( 'name' => 'Black Ops One', 'variant' => ':regular' ),
+		array( 'name' => 'Bokor', 'variant' => ':regular' ),
+		array( 'name' => 'Bonbon', 'variant' => ':regular' ),
+		array( 'name' => 'Boogaloo', 'variant' => ':regular' ),
+		array( 'name' => 'Bowlby One', 'variant' => ':regular' ),
+		array( 'name' => 'Bowlby One SC', 'variant' => ':regular' ),
+		array( 'name' => 'Brawler', 'variant' => ':regular' ),
+		array( 'name' => 'Bree Serif', 'variant' => ':regular' ),
+		array( 'name' => 'Bubblegum Sans', 'variant' => ':regular' ),
+		array( 'name' => 'Bubbler One', 'variant' => ':regular' ),
+		array( 'name' => 'Buda', 'variant' => ':300' ),
+		array( 'name' => 'Buenard', 'variant' => ':regular,:700' ),
+		array( 'name' => 'Butcherman', 'variant' => ':regular' ),
+		array( 'name' => 'Butterfly Kids', 'variant' => ':regular' ),
+		array( 'name' => 'Cabin', 'variant' => ':regular,:italic,:500,:500italic,:600,:600italic,:700,:700italic' ),
+		array( 'name' => 'Cabin Condensed', 'variant' => ':regular,:500,:600,:700' ),
+		array( 'name' => 'Cabin Sketch', 'variant' => ':regular,:700' ),
+		array( 'name' => 'Caesar Dressing', 'variant' => ':regular' ),
+		array( 'name' => 'Cagliostro', 'variant' => ':regular' ),
+		array( 'name' => 'Calligraffitti', 'variant' => ':regular' ),
+		array( 'name' => 'Cambo', 'variant' => ':regular' ),
+		array( 'name' => 'Candal', 'variant' => ':regular' ),
+		array( 'name' => 'Cantarell', 'variant' => ':regular,:italic,:700,:700italic' ),
+		array( 'name' => 'Cantata One', 'variant' => ':regular' ),
+		array( 'name' => 'Cantora One', 'variant' => ':regular' ),
+		array( 'name' => 'Capriola', 'variant' => ':regular' ),
+		array( 'name' => 'Cardo', 'variant' => ':regular,:italic,:700' ),
+		array( 'name' => 'Carme', 'variant' => ':regular' ),
+		array( 'name' => 'Carrois Gothic', 'variant' => ':regular' ),
+		array( 'name' => 'Carrois Gothic SC', 'variant' => ':regular' ),
+		array( 'name' => 'Carter One', 'variant' => ':regular' ),
+		array( 'name' => 'Caudex', 'variant' => ':regular,:italic,:700,:700italic' ),
+		array( 'name' => 'Cedarville Cursive', 'variant' => ':regular' ),
+		array( 'name' => 'Ceviche One', 'variant' => ':regular' ),
+		array( 'name' => 'Changa One', 'variant' => ':regular,:italic' ),
+		array( 'name' => 'Chango', 'variant' => ':regular' ),
+		array( 'name' => 'Chau Philomene One', 'variant' => ':regular,:italic' ),
+		array( 'name' => 'Chela One', 'variant' => ':regular' ),
+		array( 'name' => 'Chelsea Market', 'variant' => ':regular' ),
+		array( 'name' => 'Chenla', 'variant' => ':regular' ),
+		array( 'name' => 'Cherry Cream Soda', 'variant' => ':regular' ),
+		array( 'name' => 'Cherry Swash', 'variant' => ':regular,:700' ),
+		array( 'name' => 'Chewy', 'variant' => ':regular' ),
+		array( 'name' => 'Chicle', 'variant' => ':regular' ),
+		array( 'name' => 'Chivo', 'variant' => ':regular,:italic,:900,:900italic' ),
+		array( 'name' => 'Cinzel', 'variant' => ':regular,:700,:900' ),
+		array( 'name' => 'Cinzel Decorative', 'variant' => ':regular,:700,:900' ),
+		array( 'name' => 'Clicker Script', 'variant' => ':regular' ),
+		array( 'name' => 'Coda', 'variant' => ':regular,:800' ),
+		array( 'name' => 'Coda Caption', 'variant' => ':800' ),
+		array( 'name' => 'Codystar', 'variant' => ':300,:regular' ),
+		array( 'name' => 'Combo', 'variant' => ':regular' ),
+		array( 'name' => 'Comfortaa', 'variant' => ':300,:regular,:700' ),
+		array( 'name' => 'Coming Soon', 'variant' => ':regular' ),
+		array( 'name' => 'Concert One', 'variant' => ':regular' ),
+		array( 'name' => 'Condiment', 'variant' => ':regular' ),
+		array( 'name' => 'Content', 'variant' => ':regular,:700' ),
+		array( 'name' => 'Contrail One', 'variant' => ':regular' ),
+		array( 'name' => 'Convergence', 'variant' => ':regular' ),
+		array( 'name' => 'Cookie', 'variant' => ':regular' ),
+		array( 'name' => 'Copse', 'variant' => ':regular' ),
+		array( 'name' => 'Corben', 'variant' => ':regular,:700' ),
+		array( 'name' => 'Courgette', 'variant' => ':regular' ),
+		array( 'name' => 'Cousine', 'variant' => ':regular,:italic,:700,:700italic' ),
+		array( 'name' => 'Coustard', 'variant' => ':regular,:900' ),
+		array( 'name' => 'Covered By Your Grace', 'variant' => ':regular' ),
+		array( 'name' => 'Crafty Girls', 'variant' => ':regular' ),
+		array( 'name' => 'Creepster', 'variant' => ':regular' ),
+		array( 'name' => 'Crete Round', 'variant' => ':regular,:italic' ),
+		array( 'name' => 'Crimson Text', 'variant' => ':regular,:italic,:600,:600italic,:700,:700italic' ),
+		array( 'name' => 'Croissant One', 'variant' => ':regular' ),
+		array( 'name' => 'Crushed', 'variant' => ':regular' ),
+		array( 'name' => 'Cuprum', 'variant' => ':regular,:italic,:700,:700italic' ),
+		array( 'name' => 'Cutive', 'variant' => ':regular' ),
+		array( 'name' => 'Cutive Mono', 'variant' => ':regular' ),
+		array( 'name' => 'Damion', 'variant' => ':regular' ),
+		array( 'name' => 'Dancing Script', 'variant' => ':regular,:700' ),
+		array( 'name' => 'Dangrek', 'variant' => ':regular' ),
+		array( 'name' => 'Dawning of a New Day', 'variant' => ':regular' ),
+		array( 'name' => 'Days One', 'variant' => ':regular' ),
+		array( 'name' => 'Delius', 'variant' => ':regular' ),
+		array( 'name' => 'Delius Swash Caps', 'variant' => ':regular' ),
+		array( 'name' => 'Delius Unicase', 'variant' => ':regular,:700' ),
+		array( 'name' => 'Della Respira', 'variant' => ':regular' ),
+		array( 'name' => 'Denk One', 'variant' => ':regular' ),
+		array( 'name' => 'Devonshire', 'variant' => ':regular' ),
+		array( 'name' => 'Didact Gothic', 'variant' => ':regular' ),
+		array( 'name' => 'Diplomata', 'variant' => ':regular' ),
+		array( 'name' => 'Diplomata SC', 'variant' => ':regular' ),
+		array( 'name' => 'Domine', 'variant' => ':regular,:700' ),
+		array( 'name' => 'Donegal One', 'variant' => ':regular' ),
+		array( 'name' => 'Doppio One', 'variant' => ':regular' ),
+		array( 'name' => 'Dorsa', 'variant' => ':regular' ),
+		array( 'name' => 'Dosis', 'variant' => ':200,:300,:regular,:500,:600,:700,:800' ),
+		array( 'name' => 'Dr Sugiyama', 'variant' => ':regular' ),
+		array( 'name' => 'Droid Sans', 'variant' => ':regular,:700' ),
+		array( 'name' => 'Droid Sans Mono', 'variant' => ':regular' ),
+		array( 'name' => 'Droid Serif', 'variant' => ':regular,:italic,:700,:700italic' ),
+		array( 'name' => 'Duru Sans', 'variant' => ':regular' ),
+		array( 'name' => 'Dynalight', 'variant' => ':regular' ),
+		array( 'name' => 'EB Garamond', 'variant' => ':regular' ),
+		array( 'name' => 'Eagle Lake', 'variant' => ':regular' ),
+		array( 'name' => 'Eater', 'variant' => ':regular' ),
+		array( 'name' => 'Economica', 'variant' => ':regular,:italic,:700,:700italic' ),
+		array( 'name' => 'Electrolize', 'variant' => ':regular' ),
+		array( 'name' => 'Elsie', 'variant' => ':regular,:900' ),
+		array( 'name' => 'Elsie Swash Caps', 'variant' => ':regular,:900' ),
+		array( 'name' => 'Emblema One', 'variant' => ':regular' ),
+		array( 'name' => 'Emilys Candy', 'variant' => ':regular' ),
+		array( 'name' => 'Engagement', 'variant' => ':regular' ),
+		array( 'name' => 'Englebert', 'variant' => ':regular' ),
+		array( 'name' => 'Enriqueta', 'variant' => ':regular,:700' ),
+		array( 'name' => 'Erica One', 'variant' => ':regular' ),
+		array( 'name' => 'Esteban', 'variant' => ':regular' ),
+		array( 'name' => 'Euphoria Script', 'variant' => ':regular' ),
+		array( 'name' => 'Ewert', 'variant' => ':regular' ),
+		array( 'name' => 'Exo', 'variant' => ':100,:100italic,:200,:200italic,:300,:300italic,:regular,:italic,:500,:500italic,:600,:600italic,:700,:700italic,:800,:800italic,:900,:900italic' ),
+		array( 'name' => 'Exo 2', 'variant' => ':100,:100italic,:200,:200italic,:300,:300italic,:regular,:italic,:500,:500italic,:600,:600italic,:700,:700italic,:800,:800italic,:900,:900italic' ),
+		array( 'name' => 'Expletus Sans', 'variant' => ':regular,:italic,:500,:500italic,:600,:600italic,:700,:700italic' ),
+		array( 'name' => 'Fanwood Text', 'variant' => ':regular,:italic' ),
+		array( 'name' => 'Fascinate', 'variant' => ':regular' ),
+		array( 'name' => 'Fascinate Inline', 'variant' => ':regular' ),
+		array( 'name' => 'Faster One', 'variant' => ':regular' ),
+		array( 'name' => 'Fasthand', 'variant' => ':regular' ),
+		array( 'name' => 'Fauna One', 'variant' => ':regular' ),
+		array( 'name' => 'Federant', 'variant' => ':regular' ),
+		array( 'name' => 'Federo', 'variant' => ':regular' ),
+		array( 'name' => 'Felipa', 'variant' => ':regular' ),
+		array( 'name' => 'Fenix', 'variant' => ':regular' ),
+		array( 'name' => 'Finger Paint', 'variant' => ':regular' ),
+		array( 'name' => 'Fjalla One', 'variant' => ':regular' ),
+		array( 'name' => 'Fjord One', 'variant' => ':regular' ),
+		array( 'name' => 'Flamenco', 'variant' => ':300,:regular' ),
+		array( 'name' => 'Flavors', 'variant' => ':regular' ),
+		array( 'name' => 'Fondamento', 'variant' => ':regular,:italic' ),
+		array( 'name' => 'Fontdiner Swanky', 'variant' => ':regular' ),
+		array( 'name' => 'Forum', 'variant' => ':regular' ),
+		array( 'name' => 'Francois One', 'variant' => ':regular' ),
+		array( 'name' => 'Freckle Face', 'variant' => ':regular' ),
+		array( 'name' => 'Fredericka the Great', 'variant' => ':regular' ),
+		array( 'name' => 'Fredoka One', 'variant' => ':regular' ),
+		array( 'name' => 'Freehand', 'variant' => ':regular' ),
+		array( 'name' => 'Fresca', 'variant' => ':regular' ),
+		array( 'name' => 'Frijole', 'variant' => ':regular' ),
+		array( 'name' => 'Fruktur', 'variant' => ':regular' ),
+		array( 'name' => 'Fugaz One', 'variant' => ':regular' ),
+		array( 'name' => 'GFS Didot', 'variant' => ':regular' ),
+		array( 'name' => 'GFS Neohellenic', 'variant' => ':regular,:italic,:700,:700italic' ),
+		array( 'name' => 'Gabriela', 'variant' => ':regular' ),
+		array( 'name' => 'Gafata', 'variant' => ':regular' ),
+		array( 'name' => 'Galdeano', 'variant' => ':regular' ),
+		array( 'name' => 'Galindo', 'variant' => ':regular' ),
+		array( 'name' => 'Gentium Basic', 'variant' => ':regular,:italic,:700,:700italic' ),
+		array( 'name' => 'Gentium Book Basic', 'variant' => ':regular,:italic,:700,:700italic' ),
+		array( 'name' => 'Geo', 'variant' => ':regular,:italic' ),
+		array( 'name' => 'Geostar', 'variant' => ':regular' ),
+		array( 'name' => 'Geostar Fill', 'variant' => ':regular' ),
+		array( 'name' => 'Germania One', 'variant' => ':regular' ),
+		array( 'name' => 'Gilda Display', 'variant' => ':regular' ),
+		array( 'name' => 'Give You Glory', 'variant' => ':regular' ),
+		array( 'name' => 'Glass Antiqua', 'variant' => ':regular' ),
+		array( 'name' => 'Glegoo', 'variant' => ':regular' ),
+		array( 'name' => 'Gloria Hallelujah', 'variant' => ':regular' ),
+		array( 'name' => 'Goblin One', 'variant' => ':regular' ),
+		array( 'name' => 'Gochi Hand', 'variant' => ':regular' ),
+		array( 'name' => 'Gorditas', 'variant' => ':regular,:700' ),
+		array( 'name' => 'Goudy Bookletter 1911', 'variant' => ':regular' ),
+		array( 'name' => 'Graduate', 'variant' => ':regular' ),
+		array( 'name' => 'Grand Hotel', 'variant' => ':regular' ),
+		array( 'name' => 'Gravitas One', 'variant' => ':regular' ),
+		array( 'name' => 'Great Vibes', 'variant' => ':regular' ),
+		array( 'name' => 'Griffy', 'variant' => ':regular' ),
+		array( 'name' => 'Gruppo', 'variant' => ':regular' ),
+		array( 'name' => 'Gudea', 'variant' => ':regular,:italic,:700' ),
+		array( 'name' => 'Habibi', 'variant' => ':regular' ),
+		array( 'name' => 'Hammersmith One', 'variant' => ':regular' ),
+		array( 'name' => 'Hanalei', 'variant' => ':regular' ),
+		array( 'name' => 'Hanalei Fill', 'variant' => ':regular' ),
+		array( 'name' => 'Handlee', 'variant' => ':regular' ),
+		array( 'name' => 'Hanuman', 'variant' => ':regular,:700' ),
+		array( 'name' => 'Happy Monkey', 'variant' => ':regular' ),
+		array( 'name' => 'Headland One', 'variant' => ':regular' ),
+		array( 'name' => 'Henny Penny', 'variant' => ':regular' ),
+		array( 'name' => 'Herr Von Muellerhoff', 'variant' => ':regular' ),
+		array( 'name' => 'Holtwood One SC', 'variant' => ':regular' ),
+		array( 'name' => 'Homemade Apple', 'variant' => ':regular' ),
+		array( 'name' => 'Homenaje', 'variant' => ':regular' ),
+		array( 'name' => 'IM Fell DW Pica', 'variant' => ':regular,:italic' ),
+		array( 'name' => 'IM Fell DW Pica SC', 'variant' => ':regular' ),
+		array( 'name' => 'IM Fell Double Pica', 'variant' => ':regular,:italic' ),
+		array( 'name' => 'IM Fell Double Pica SC', 'variant' => ':regular' ),
+		array( 'name' => 'IM Fell English', 'variant' => ':regular,:italic' ),
+		array( 'name' => 'IM Fell English SC', 'variant' => ':regular' ),
+		array( 'name' => 'IM Fell French Canon', 'variant' => ':regular,:italic' ),
+		array( 'name' => 'IM Fell French Canon SC', 'variant' => ':regular' ),
+		array( 'name' => 'IM Fell Great Primer', 'variant' => ':regular,:italic' ),
+		array( 'name' => 'IM Fell Great Primer SC', 'variant' => ':regular' ),
+		array( 'name' => 'Iceberg', 'variant' => ':regular' ),
+		array( 'name' => 'Iceland', 'variant' => ':regular' ),
+		array( 'name' => 'Imprima', 'variant' => ':regular' ),
+		array( 'name' => 'Inconsolata', 'variant' => ':regular,:700' ),
+		array( 'name' => 'Inder', 'variant' => ':regular' ),
+		array( 'name' => 'Indie Flower', 'variant' => ':regular' ),
+		array( 'name' => 'Inika', 'variant' => ':regular,:700' ),
+		array( 'name' => 'Irish Grover', 'variant' => ':regular' ),
+		array( 'name' => 'Istok Web', 'variant' => ':regular,:italic,:700,:700italic' ),
+		array( 'name' => 'Italiana', 'variant' => ':regular' ),
+		array( 'name' => 'Italianno', 'variant' => ':regular' ),
+		array( 'name' => 'Jacques Francois', 'variant' => ':regular' ),
+		array( 'name' => 'Jacques Francois Shadow', 'variant' => ':regular' ),
+		array( 'name' => 'Jim Nightshade', 'variant' => ':regular' ),
+		array( 'name' => 'Jockey One', 'variant' => ':regular' ),
+		array( 'name' => 'Jolly Lodger', 'variant' => ':regular' ),
+		array( 'name' => 'Josefin Sans', 'variant' => ':100,:100italic,:300,:300italic,:regular,:italic,:600,:600italic,:700,:700italic' ),
+		array( 'name' => 'Josefin Slab', 'variant' => ':100,:100italic,:300,:300italic,:regular,:italic,:600,:600italic,:700,:700italic' ),
+		array( 'name' => 'Joti One', 'variant' => ':regular' ),
+		array( 'name' => 'Judson', 'variant' => ':regular,:italic,:700' ),
+		array( 'name' => 'Julee', 'variant' => ':regular' ),
+		array( 'name' => 'Julius Sans One', 'variant' => ':regular' ),
+		array( 'name' => 'Junge', 'variant' => ':regular' ),
+		array( 'name' => 'Jura', 'variant' => ':300,:regular,:500,:600' ),
+		array( 'name' => 'Just Another Hand', 'variant' => ':regular' ),
+		array( 'name' => 'Just Me Again Down Here', 'variant' => ':regular' ),
+		array( 'name' => 'Kameron', 'variant' => ':regular,:700' ),
+		array( 'name' => 'Kantumruy', 'variant' => ':300,:regular,:700' ),
+		array( 'name' => 'Karla', 'variant' => ':regular,:italic,:700,:700italic' ),
+		array( 'name' => 'Kaushan Script', 'variant' => ':regular' ),
+		array( 'name' => 'Kavoon', 'variant' => ':regular' ),
+		array( 'name' => 'Kdam Thmor', 'variant' => ':regular' ),
+		array( 'name' => 'Keania One', 'variant' => ':regular' ),
+		array( 'name' => 'Kelly Slab', 'variant' => ':regular' ),
+		array( 'name' => 'Kenia', 'variant' => ':regular' ),
+		array( 'name' => 'Khmer', 'variant' => ':regular' ),
+		array( 'name' => 'Kite One', 'variant' => ':regular' ),
+		array( 'name' => 'Knewave', 'variant' => ':regular' ),
+		array( 'name' => 'Kotta One', 'variant' => ':regular' ),
+		array( 'name' => 'Koulen', 'variant' => ':regular' ),
+		array( 'name' => 'Kranky', 'variant' => ':regular' ),
+		array( 'name' => 'Kreon', 'variant' => ':300,:regular,:700' ),
+		array( 'name' => 'Kristi', 'variant' => ':regular' ),
+		array( 'name' => 'Krona One', 'variant' => ':regular' ),
+		array( 'name' => 'La Belle Aurore', 'variant' => ':regular' ),
+		array( 'name' => 'Lancelot', 'variant' => ':regular' ),
+		array( 'name' => 'Lato', 'variant' => ':100,:100italic,:300,:300italic,:regular,:italic,:700,:700italic,:900,:900italic' ),
+		array( 'name' => 'League Script', 'variant' => ':regular' ),
+		array( 'name' => 'Leckerli One', 'variant' => ':regular' ),
+		array( 'name' => 'Ledger', 'variant' => ':regular' ),
+		array( 'name' => 'Lekton', 'variant' => ':regular,:italic,:700' ),
+		array( 'name' => 'Lemon', 'variant' => ':regular' ),
+		array( 'name' => 'Libre Baskerville', 'variant' => ':regular,:italic,:700' ),
+		array( 'name' => 'Life Savers', 'variant' => ':regular,:700' ),
+		array( 'name' => 'Lilita One', 'variant' => ':regular' ),
+		array( 'name' => 'Lily Script One', 'variant' => ':regular' ),
+		array( 'name' => 'Limelight', 'variant' => ':regular' ),
+		array( 'name' => 'Linden Hill', 'variant' => ':regular,:italic' ),
+		array( 'name' => 'Lobster', 'variant' => ':regular' ),
+		array( 'name' => 'Lobster Two', 'variant' => ':regular,:italic,:700,:700italic' ),
+		array( 'name' => 'Londrina Outline', 'variant' => ':regular' ),
+		array( 'name' => 'Londrina Shadow', 'variant' => ':regular' ),
+		array( 'name' => 'Londrina Sketch', 'variant' => ':regular' ),
+		array( 'name' => 'Londrina Solid', 'variant' => ':regular' ),
+		array( 'name' => 'Lora', 'variant' => ':regular,:italic,:700,:700italic' ),
+		array( 'name' => 'Love Ya Like A Sister', 'variant' => ':regular' ),
+		array( 'name' => 'Loved by the King', 'variant' => ':regular' ),
+		array( 'name' => 'Lovers Quarrel', 'variant' => ':regular' ),
+		array( 'name' => 'Luckiest Guy', 'variant' => ':regular' ),
+		array( 'name' => 'Lusitana', 'variant' => ':regular,:700' ),
+		array( 'name' => 'Lustria', 'variant' => ':regular' ),
+		array( 'name' => 'Macondo', 'variant' => ':regular' ),
+		array( 'name' => 'Macondo Swash Caps', 'variant' => ':regular' ),
+		array( 'name' => 'Magra', 'variant' => ':regular,:700' ),
+		array( 'name' => 'Maiden Orange', 'variant' => ':regular' ),
+		array( 'name' => 'Mako', 'variant' => ':regular' ),
+		array( 'name' => 'Marcellus', 'variant' => ':regular' ),
+		array( 'name' => 'Marcellus SC', 'variant' => ':regular' ),
+		array( 'name' => 'Marck Script', 'variant' => ':regular' ),
+		array( 'name' => 'Margarine', 'variant' => ':regular' ),
+		array( 'name' => 'Marko One', 'variant' => ':regular' ),
+		array( 'name' => 'Marmelad', 'variant' => ':regular' ),
+		array( 'name' => 'Marvel', 'variant' => ':regular,:italic,:700,:700italic' ),
+		array( 'name' => 'Mate', 'variant' => ':regular,:italic' ),
+		array( 'name' => 'Mate SC', 'variant' => ':regular' ),
+		array( 'name' => 'Maven Pro', 'variant' => ':regular,:500,:700,:900' ),
+		array( 'name' => 'McLaren', 'variant' => ':regular' ),
+		array( 'name' => 'Meddon', 'variant' => ':regular' ),
+		array( 'name' => 'MedievalSharp', 'variant' => ':regular' ),
+		array( 'name' => 'Medula One', 'variant' => ':regular' ),
+		array( 'name' => 'Megrim', 'variant' => ':regular' ),
+		array( 'name' => 'Meie Script', 'variant' => ':regular' ),
+		array( 'name' => 'Merienda', 'variant' => ':regular,:700' ),
+		array( 'name' => 'Merienda One', 'variant' => ':regular' ),
+		array( 'name' => 'Merriweather', 'variant' => ':300,:300italic,:regular,:italic,:700,:700italic,:900,:900italic' ),
+		array( 'name' => 'Merriweather Sans', 'variant' => ':300,:300italic,:regular,:italic,:700,:700italic,:800,:800italic' ),
+		array( 'name' => 'Metal', 'variant' => ':regular' ),
+		array( 'name' => 'Metal Mania', 'variant' => ':regular' ),
+		array( 'name' => 'Metamorphous', 'variant' => ':regular' ),
+		array( 'name' => 'Metrophobic', 'variant' => ':regular' ),
+		array( 'name' => 'Michroma', 'variant' => ':regular' ),
+		array( 'name' => 'Milonga', 'variant' => ':regular' ),
+		array( 'name' => 'Miltonian', 'variant' => ':regular' ),
+		array( 'name' => 'Miltonian Tattoo', 'variant' => ':regular' ),
+		array( 'name' => 'Miniver', 'variant' => ':regular' ),
+		array( 'name' => 'Miss Fajardose', 'variant' => ':regular' ),
+		array( 'name' => 'Modern Antiqua', 'variant' => ':regular' ),
+		array( 'name' => 'Molengo', 'variant' => ':regular' ),
+		array( 'name' => 'Molle', 'variant' => ':italic' ),
+		array( 'name' => 'Monda', 'variant' => ':regular,:700' ),
+		array( 'name' => 'Monofett', 'variant' => ':regular' ),
+		array( 'name' => 'Monoton', 'variant' => ':regular' ),
+		array( 'name' => 'Monsieur La Doulaise', 'variant' => ':regular' ),
+		array( 'name' => 'Montaga', 'variant' => ':regular' ),
+		array( 'name' => 'Montez', 'variant' => ':regular' ),
+		array( 'name' => 'Montserrat', 'variant' => ':regular,:700' ),
+		array( 'name' => 'Montserrat Alternates', 'variant' => ':regular,:700' ),
+		array( 'name' => 'Montserrat Subrayada', 'variant' => ':regular,:700' ),
+		array( 'name' => 'Moul', 'variant' => ':regular' ),
+		array( 'name' => 'Moulpali', 'variant' => ':regular' ),
+		array( 'name' => 'Mountains of Christmas', 'variant' => ':regular,:700' ),
+		array( 'name' => 'Mouse Memoirs', 'variant' => ':regular' ),
+		array( 'name' => 'Mr Bedfort', 'variant' => ':regular' ),
+		array( 'name' => 'Mr Dafoe', 'variant' => ':regular' ),
+		array( 'name' => 'Mr De Haviland', 'variant' => ':regular' ),
+		array( 'name' => 'Mrs Saint Delafield', 'variant' => ':regular' ),
+		array( 'name' => 'Mrs Sheppards', 'variant' => ':regular' ),
+		array( 'name' => 'Muli', 'variant' => ':300,:300italic,:regular,:italic' ),
+		array( 'name' => 'Mystery Quest', 'variant' => ':regular' ),
+		array( 'name' => 'Neucha', 'variant' => ':regular' ),
+		array( 'name' => 'Neuton', 'variant' => ':200,:300,:regular,:italic,:700,:800' ),
+		array( 'name' => 'New Rocker', 'variant' => ':regular' ),
+		array( 'name' => 'News Cycle', 'variant' => ':regular,:700' ),
+		array( 'name' => 'Niconne', 'variant' => ':regular' ),
+		array( 'name' => 'Nixie One', 'variant' => ':regular' ),
+		array( 'name' => 'Nobile', 'variant' => ':regular,:italic,:700,:700italic' ),
+		array( 'name' => 'Nokora', 'variant' => ':regular,:700' ),
+		array( 'name' => 'Norican', 'variant' => ':regular' ),
+		array( 'name' => 'Nosifer', 'variant' => ':regular' ),
+		array( 'name' => 'Nothing You Could Do', 'variant' => ':regular' ),
+		array( 'name' => 'Noticia Text', 'variant' => ':regular,:italic,:700,:700italic' ),
+		array( 'name' => 'Noto Sans', 'variant' => ':regular,:italic,:700,:700italic' ),
+		array( 'name' => 'Noto Serif', 'variant' => ':regular,:italic,:700,:700italic' ),
+		array( 'name' => 'Nova Cut', 'variant' => ':regular' ),
+		array( 'name' => 'Nova Flat', 'variant' => ':regular' ),
+		array( 'name' => 'Nova Mono', 'variant' => ':regular' ),
+		array( 'name' => 'Nova Oval', 'variant' => ':regular' ),
+		array( 'name' => 'Nova Round', 'variant' => ':regular' ),
+		array( 'name' => 'Nova Script', 'variant' => ':regular' ),
+		array( 'name' => 'Nova Slim', 'variant' => ':regular' ),
+		array( 'name' => 'Nova Square', 'variant' => ':regular' ),
+		array( 'name' => 'Numans', 'variant' => ':regular' ),
+		array( 'name' => 'Nunito', 'variant' => ':300,:regular,:700' ),
+		array( 'name' => 'Odor Mean Chey', 'variant' => ':regular' ),
+		array( 'name' => 'Offside', 'variant' => ':regular' ),
+		array( 'name' => 'Old Standard TT', 'variant' => ':regular,:italic,:700' ),
+		array( 'name' => 'Oldenburg', 'variant' => ':regular' ),
+		array( 'name' => 'Oleo Script', 'variant' => ':regular,:700' ),
+		array( 'name' => 'Oleo Script Swash Caps', 'variant' => ':regular,:700' ),
+		array( 'name' => 'Open Sans', 'variant' => ':300,:300italic,:regular,:italic,:600,:600italic,:700,:700italic,:800,:800italic' ),
+		array( 'name' => 'Open Sans Condensed', 'variant' => ':300,:300italic,:700' ),
+		array( 'name' => 'Oranienbaum', 'variant' => ':regular' ),
+		array( 'name' => 'Orbitron', 'variant' => ':regular,:500,:700,:900' ),
+		array( 'name' => 'Oregano', 'variant' => ':regular,:italic' ),
+		array( 'name' => 'Orienta', 'variant' => ':regular' ),
+		array( 'name' => 'Original Surfer', 'variant' => ':regular' ),
+		array( 'name' => 'Oswald', 'variant' => ':300,:regular,:700' ),
+		array( 'name' => 'Over the Rainbow', 'variant' => ':regular' ),
+		array( 'name' => 'Overlock', 'variant' => ':regular,:italic,:700,:700italic,:900,:900italic' ),
+		array( 'name' => 'Overlock SC', 'variant' => ':regular' ),
+		array( 'name' => 'Ovo', 'variant' => ':regular' ),
+		array( 'name' => 'Oxygen', 'variant' => ':300,:regular,:700' ),
+		array( 'name' => 'Oxygen Mono', 'variant' => ':regular' ),
+		array( 'name' => 'PT Mono', 'variant' => ':regular' ),
+		array( 'name' => 'PT Sans', 'variant' => ':regular,:italic,:700,:700italic' ),
+		array( 'name' => 'PT Sans Caption', 'variant' => ':regular,:700' ),
+		array( 'name' => 'PT Sans Narrow', 'variant' => ':regular,:700' ),
+		array( 'name' => 'PT Serif', 'variant' => ':regular,:italic,:700,:700italic' ),
+		array( 'name' => 'PT Serif Caption', 'variant' => ':regular,:italic' ),
+		array( 'name' => 'Pacifico', 'variant' => ':regular' ),
+		array( 'name' => 'Paprika', 'variant' => ':regular' ),
+		array( 'name' => 'Parisienne', 'variant' => ':regular' ),
+		array( 'name' => 'Passero One', 'variant' => ':regular' ),
+		array( 'name' => 'Passion One', 'variant' => ':regular,:700,:900' ),
+		array( 'name' => 'Pathway Gothic One', 'variant' => ':regular' ),
+		array( 'name' => 'Patrick Hand', 'variant' => ':regular' ),
+		array( 'name' => 'Patrick Hand SC', 'variant' => ':regular' ),
+		array( 'name' => 'Patua One', 'variant' => ':regular' ),
+		array( 'name' => 'Paytone One', 'variant' => ':regular' ),
+		array( 'name' => 'Peralta', 'variant' => ':regular' ),
+		array( 'name' => 'Permanent Marker', 'variant' => ':regular' ),
+		array( 'name' => 'Petit Formal Script', 'variant' => ':regular' ),
+		array( 'name' => 'Petrona', 'variant' => ':regular' ),
+		array( 'name' => 'Philosopher', 'variant' => ':regular,:italic,:700,:700italic' ),
+		array( 'name' => 'Piedra', 'variant' => ':regular' ),
+		array( 'name' => 'Pinyon Script', 'variant' => ':regular' ),
+		array( 'name' => 'Pirata One', 'variant' => ':regular' ),
+		array( 'name' => 'Plaster', 'variant' => ':regular' ),
+		array( 'name' => 'Play', 'variant' => ':regular,:700' ),
+		array( 'name' => 'Playball', 'variant' => ':regular' ),
+		array( 'name' => 'Playfair Display', 'variant' => ':regular,:italic,:700,:700italic,:900,:900italic' ),
+		array( 'name' => 'Playfair Display SC', 'variant' => ':regular,:italic,:700,:700italic,:900,:900italic' ),
+		array( 'name' => 'Podkova', 'variant' => ':regular,:700' ),
+		array( 'name' => 'Poiret One', 'variant' => ':regular' ),
+		array( 'name' => 'Poller One', 'variant' => ':regular' ),
+		array( 'name' => 'Poly', 'variant' => ':regular,:italic' ),
+		array( 'name' => 'Pompiere', 'variant' => ':regular' ),
+		array( 'name' => 'Pontano Sans', 'variant' => ':regular' ),
+		array( 'name' => 'Port Lligat Sans', 'variant' => ':regular' ),
+		array( 'name' => 'Port Lligat Slab', 'variant' => ':regular' ),
+		array( 'name' => 'Prata', 'variant' => ':regular' ),
+		array( 'name' => 'Preahvihear', 'variant' => ':regular' ),
+		array( 'name' => 'Press Start 2P', 'variant' => ':regular' ),
+		array( 'name' => 'Princess Sofia', 'variant' => ':regular' ),
+		array( 'name' => 'Prociono', 'variant' => ':regular' ),
+		array( 'name' => 'Prosto One', 'variant' => ':regular' ),
+		array( 'name' => 'Puritan', 'variant' => ':regular,:italic,:700,:700italic' ),
+		array( 'name' => 'Purple Purse', 'variant' => ':regular' ),
+		array( 'name' => 'Quando', 'variant' => ':regular' ),
+		array( 'name' => 'Quantico', 'variant' => ':regular,:italic,:700,:700italic' ),
+		array( 'name' => 'Quattrocento', 'variant' => ':regular,:700' ),
+		array( 'name' => 'Quattrocento Sans', 'variant' => ':regular,:italic,:700,:700italic' ),
+		array( 'name' => 'Questrial', 'variant' => ':regular' ),
+		array( 'name' => 'Quicksand', 'variant' => ':300,:regular,:700' ),
+		array( 'name' => 'Quintessential', 'variant' => ':regular' ),
+		array( 'name' => 'Qwigley', 'variant' => ':regular' ),
+		array( 'name' => 'Racing Sans One', 'variant' => ':regular' ),
+		array( 'name' => 'Radley', 'variant' => ':regular,:italic' ),
+		array( 'name' => 'Raleway', 'variant' => ':100,:200,:300,:regular,:500,:600,:700,:800,:900' ),
+		array( 'name' => 'Raleway Dots', 'variant' => ':regular' ),
+		array( 'name' => 'Rambla', 'variant' => ':regular,:italic,:700,:700italic' ),
+		array( 'name' => 'Rammetto One', 'variant' => ':regular' ),
+		array( 'name' => 'Ranchers', 'variant' => ':regular' ),
+		array( 'name' => 'Rancho', 'variant' => ':regular' ),
+		array( 'name' => 'Rationale', 'variant' => ':regular' ),
+		array( 'name' => 'Redressed', 'variant' => ':regular' ),
+		array( 'name' => 'Reenie Beanie', 'variant' => ':regular' ),
+		array( 'name' => 'Revalia', 'variant' => ':regular' ),
+		array( 'name' => 'Ribeye', 'variant' => ':regular' ),
+		array( 'name' => 'Ribeye Marrow', 'variant' => ':regular' ),
+		array( 'name' => 'Righteous', 'variant' => ':regular' ),
+		array( 'name' => 'Risque', 'variant' => ':regular' ),
+		array( 'name' => 'Roboto', 'variant' => ':100,:100italic,:300,:300italic,:regular,:italic,:500,:500italic,:700,:700italic,:900,:900italic' ),
+		array( 'name' => 'Roboto Condensed', 'variant' => ':300,:300italic,:regular,:italic,:700,:700italic' ),
+		array( 'name' => 'Roboto Slab', 'variant' => ':100,:300,:regular,:700' ),
+		array( 'name' => 'Rochester', 'variant' => ':regular' ),
+		array( 'name' => 'Rock Salt', 'variant' => ':regular' ),
+		array( 'name' => 'Rokkitt', 'variant' => ':regular,:700' ),
+		array( 'name' => 'Romanesco', 'variant' => ':regular' ),
+		array( 'name' => 'Ropa Sans', 'variant' => ':regular,:italic' ),
+		array( 'name' => 'Rosario', 'variant' => ':regular,:italic,:700,:700italic' ),
+		array( 'name' => 'Rosarivo', 'variant' => ':regular,:italic' ),
+		array( 'name' => 'Rouge Script', 'variant' => ':regular' ),
+		array( 'name' => 'Ruda', 'variant' => ':regular,:700,:900' ),
+		array( 'name' => 'Rufina', 'variant' => ':regular,:700' ),
+		array( 'name' => 'Ruge Boogie', 'variant' => ':regular' ),
+		array( 'name' => 'Ruluko', 'variant' => ':regular' ),
+		array( 'name' => 'Rum Raisin', 'variant' => ':regular' ),
+		array( 'name' => 'Ruslan Display', 'variant' => ':regular' ),
+		array( 'name' => 'Russo One', 'variant' => ':regular' ),
+		array( 'name' => 'Ruthie', 'variant' => ':regular' ),
+		array( 'name' => 'Rye', 'variant' => ':regular' ),
+		array( 'name' => 'Sacramento', 'variant' => ':regular' ),
+		array( 'name' => 'Sail', 'variant' => ':regular' ),
+		array( 'name' => 'Salsa', 'variant' => ':regular' ),
+		array( 'name' => 'Sanchez', 'variant' => ':regular,:italic' ),
+		array( 'name' => 'Sancreek', 'variant' => ':regular' ),
+		array( 'name' => 'Sansita One', 'variant' => ':regular' ),
+		array( 'name' => 'Sarina', 'variant' => ':regular' ),
+		array( 'name' => 'Satisfy', 'variant' => ':regular' ),
+		array( 'name' => 'Scada', 'variant' => ':regular,:italic,:700,:700italic' ),
+		array( 'name' => 'Schoolbell', 'variant' => ':regular' ),
+		array( 'name' => 'Seaweed Script', 'variant' => ':regular' ),
+		array( 'name' => 'Sevillana', 'variant' => ':regular' ),
+		array( 'name' => 'Seymour One', 'variant' => ':regular' ),
+		array( 'name' => 'Shadows Into Light', 'variant' => ':regular' ),
+		array( 'name' => 'Shadows Into Light Two', 'variant' => ':regular' ),
+		array( 'name' => 'Shanti', 'variant' => ':regular' ),
+		array( 'name' => 'Share', 'variant' => ':regular,:italic,:700,:700italic' ),
+		array( 'name' => 'Share Tech', 'variant' => ':regular' ),
+		array( 'name' => 'Share Tech Mono', 'variant' => ':regular' ),
+		array( 'name' => 'Shojumaru', 'variant' => ':regular' ),
+		array( 'name' => 'Short Stack', 'variant' => ':regular' ),
+		array( 'name' => 'Siemreap', 'variant' => ':regular' ),
+		array( 'name' => 'Sigmar One', 'variant' => ':regular' ),
+		array( 'name' => 'Signika', 'variant' => ':300,:regular,:600,:700' ),
+		array( 'name' => 'Signika Negative', 'variant' => ':300,:regular,:600,:700' ),
+		array( 'name' => 'Simonetta', 'variant' => ':regular,:italic,:900,:900italic' ),
+		array( 'name' => 'Sintony', 'variant' => ':regular,:700' ),
+		array( 'name' => 'Sirin Stencil', 'variant' => ':regular' ),
+		array( 'name' => 'Six Caps', 'variant' => ':regular' ),
+		array( 'name' => 'Skranji', 'variant' => ':regular,:700' ),
+		array( 'name' => 'Slackey', 'variant' => ':regular' ),
+		array( 'name' => 'Smokum', 'variant' => ':regular' ),
+		array( 'name' => 'Smythe', 'variant' => ':regular' ),
+		array( 'name' => 'Sniglet', 'variant' => ':regular,:800' ),
+		array( 'name' => 'Snippet', 'variant' => ':regular' ),
+		array( 'name' => 'Snowburst One', 'variant' => ':regular' ),
+		array( 'name' => 'Sofadi One', 'variant' => ':regular' ),
+		array( 'name' => 'Sofia', 'variant' => ':regular' ),
+		array( 'name' => 'Sonsie One', 'variant' => ':regular' ),
+		array( 'name' => 'Sorts Mill Goudy', 'variant' => ':regular,:italic' ),
+		array( 'name' => 'Source Code Pro', 'variant' => ':200,:300,:regular,:500,:600,:700,:900' ),
+		array( 'name' => 'Source Sans Pro', 'variant' => ':200,:200italic,:300,:300italic,:regular,:italic,:600,:600italic,:700,:700italic,:900,:900italic' ),
+		array( 'name' => 'Special Elite', 'variant' => ':regular' ),
+		array( 'name' => 'Spicy Rice', 'variant' => ':regular' ),
+		array( 'name' => 'Spinnaker', 'variant' => ':regular' ),
+		array( 'name' => 'Spirax', 'variant' => ':regular' ),
+		array( 'name' => 'Squada One', 'variant' => ':regular' ),
+		array( 'name' => 'Stalemate', 'variant' => ':regular' ),
+		array( 'name' => 'Stalinist One', 'variant' => ':regular' ),
+		array( 'name' => 'Stardos Stencil', 'variant' => ':regular,:700' ),
+		array( 'name' => 'Stint Ultra Condensed', 'variant' => ':regular' ),
+		array( 'name' => 'Stint Ultra Expanded', 'variant' => ':regular' ),
+		array( 'name' => 'Stoke', 'variant' => ':300,:regular' ),
+		array( 'name' => 'Strait', 'variant' => ':regular' ),
+		array( 'name' => 'Sue Ellen Francisco', 'variant' => ':regular' ),
+		array( 'name' => 'Sunshiney', 'variant' => ':regular' ),
+		array( 'name' => 'Supermercado One', 'variant' => ':regular' ),
+		array( 'name' => 'Suwannaphum', 'variant' => ':regular' ),
+		array( 'name' => 'Swanky and Moo Moo', 'variant' => ':regular' ),
+		array( 'name' => 'Syncopate', 'variant' => ':regular,:700' ),
+		array( 'name' => 'Tangerine', 'variant' => ':regular,:700' ),
+		array( 'name' => 'Taprom', 'variant' => ':regular' ),
+		array( 'name' => 'Tauri', 'variant' => ':regular' ),
+		array( 'name' => 'Telex', 'variant' => ':regular' ),
+		array( 'name' => 'Tenor Sans', 'variant' => ':regular' ),
+		array( 'name' => 'Text Me One', 'variant' => ':regular' ),
+		array( 'name' => 'The Girl Next Door', 'variant' => ':regular' ),
+		array( 'name' => 'Tienne', 'variant' => ':regular,:700,:900' ),
+		array( 'name' => 'Tinos', 'variant' => ':regular,:italic,:700,:700italic' ),
+		array( 'name' => 'Titan One', 'variant' => ':regular' ),
+		array( 'name' => 'Titillium Web', 'variant' => ':200,:200italic,:300,:300italic,:regular,:italic,:600,:600italic,:700,:700italic,:900' ),
+		array( 'name' => 'Trade Winds', 'variant' => ':regular' ),
+		array( 'name' => 'Trocchi', 'variant' => ':regular' ),
+		array( 'name' => 'Trochut', 'variant' => ':regular,:italic,:700' ),
+		array( 'name' => 'Trykker', 'variant' => ':regular' ),
+		array( 'name' => 'Tulpen One', 'variant' => ':regular' ),
+		array( 'name' => 'Ubuntu', 'variant' => ':300,:300italic,:regular,:italic,:500,:500italic,:700,:700italic' ),
+		array( 'name' => 'Ubuntu Condensed', 'variant' => ':regular' ),
+		array( 'name' => 'Ubuntu Mono', 'variant' => ':regular,:italic,:700,:700italic' ),
+		array( 'name' => 'Ultra', 'variant' => ':regular' ),
+		array( 'name' => 'Uncial Antiqua', 'variant' => ':regular' ),
+		array( 'name' => 'Underdog', 'variant' => ':regular' ),
+		array( 'name' => 'Unica One', 'variant' => ':regular' ),
+		array( 'name' => 'UnifrakturCook', 'variant' => ':700' ),
+		array( 'name' => 'UnifrakturMaguntia', 'variant' => ':regular' ),
+		array( 'name' => 'Unkempt', 'variant' => ':regular,:700' ),
+		array( 'name' => 'Unlock', 'variant' => ':regular' ),
+		array( 'name' => 'Unna', 'variant' => ':regular' ),
+		array( 'name' => 'VT323', 'variant' => ':regular' ),
+		array( 'name' => 'Vampiro One', 'variant' => ':regular' ),
+		array( 'name' => 'Varela', 'variant' => ':regular' ),
+		array( 'name' => 'Varela Round', 'variant' => ':regular' ),
+		array( 'name' => 'Vast Shadow', 'variant' => ':regular' ),
+		array( 'name' => 'Vibur', 'variant' => ':regular' ),
+		array( 'name' => 'Vidaloka', 'variant' => ':regular' ),
+		array( 'name' => 'Viga', 'variant' => ':regular' ),
+		array( 'name' => 'Voces', 'variant' => ':regular' ),
+		array( 'name' => 'Volkhov', 'variant' => ':regular,:italic,:700,:700italic' ),
+		array( 'name' => 'Vollkorn', 'variant' => ':regular,:italic,:700,:700italic' ),
+		array( 'name' => 'Voltaire', 'variant' => ':regular' ),
+		array( 'name' => 'Waiting for the Sunrise', 'variant' => ':regular' ),
+		array( 'name' => 'Wallpoet', 'variant' => ':regular' ),
+		array( 'name' => 'Walter Turncoat', 'variant' => ':regular' ),
+		array( 'name' => 'Warnes', 'variant' => ':regular' ),
+		array( 'name' => 'Wellfleet', 'variant' => ':regular' ),
+		array( 'name' => 'Wendy One', 'variant' => ':regular' ),
+		array( 'name' => 'Wire One', 'variant' => ':regular' ),
+		array( 'name' => 'Yanone Kaffeesatz', 'variant' => ':200,:300,:regular,:700' ),
+		array( 'name' => 'Yellowtail', 'variant' => ':regular' ),
+		array( 'name' => 'Yeseva One', 'variant' => ':regular' ),
+		array( 'name' => 'Yesteryear', 'variant' => ':regular' ),
+		array( 'name' => 'Zeyada', 'variant' => ':regular' )
+	);
+
+	return $google_fonts;
+} // End wf_get_google_fonts_store()
 
 /*-----------------------------------------------------------------------------------*/
 /* Google Webfonts Stylesheet Generator */
@@ -2382,121 +2130,61 @@ the specific themes includes/theme-actions.php or functions.php:
 add_action( 'wp_head', 'woo_google_webfonts' );
 */
 
-if (!function_exists( "woo_google_webfonts")) {
+if ( ! function_exists( 'woo_google_webfonts' ) ) {
 	function woo_google_webfonts() {
-
 		global $google_fonts;
-		$fonts = '';
+		$fonts_to_load = array();
 		$output = '';
 
 		// Setup Woo Options array
 		global $woo_options;
 
 		// Go through the options
-		if ( !empty($woo_options) ) {
-
+		if ( ! empty( $woo_options ) && ! empty( $google_fonts ) ) {
 			foreach ( $woo_options as $option ) {
-
 				// Check if option has "face" in array
-				if ( is_array($option) && isset($option['face']) ) {
-
+				if ( is_array( $option ) && isset( $option['face'] ) ) {
 					// Go through the google font array
-					foreach ($google_fonts as $font) {
-
+					foreach ( $google_fonts as $font ) {
 						// Check if the google font name exists in the current "face" option
-						if ( $option['face'] == $font['name'] AND !strstr($fonts, $font['name']))
-
+						if ( $option['face'] == $font['name'] && ! in_array( $font['name'], array_keys( $fonts_to_load ) ) ) {
 							// Add google font to output
-							$fonts .= $font['name'].$font['variant']."|";
+							$variant = '';
+							if ( isset( $font['variant'] ) ) $variant = $font['variant'];
+							$fonts_to_load[$font['name']] = $variant;
+						}
 					}
 				}
-
 			}
 
 			// Output google font css in header
-			if ( $fonts ) {
-				$fonts = str_replace( " ","+",$fonts);
+			if ( 0 < count( $fonts_to_load ) ) {
+				$fonts_and_variants = array();
+				foreach ( $fonts_to_load as $k => $v ) {
+					$fonts_and_variants[] = $k . $v;
+				}
+				$fonts_and_variants = array_map( 'urlencode', $fonts_and_variants );
+				$fonts = join( '%7C', $fonts_and_variants );
+
 				$output .= "\n<!-- Google Webfonts -->\n";
-				$output .= '<link href="http'. ( is_ssl() ? 's' : '' ) .'://fonts.googleapis.com/css?family=' . $fonts .'" rel="stylesheet" type="text/css" />'."\n\n";
-				$output = str_replace( '|"','"',$output);
+				$output .= '<link href="http'. ( is_ssl() ? 's' : '' ) .'://fonts.googleapis.com/css?family=' . $fonts .'" rel="stylesheet" type="text/css" />'."\n";
 
 				echo $output;
 			}
 		}
-
-	}
+	} // End woo_google_webfonts()
 }
 
 
 /*-----------------------------------------------------------------------------------*/
 /* Enable Home link in WP Menus
 /*-----------------------------------------------------------------------------------*/
-if ( !function_exists( 'woo_home_page_menu_args') ) {
+if ( !function_exists( 'woo_home_page_menu_args' ) ) {
 	function woo_home_page_menu_args( $args ) {
 		$args['show_home'] = true;
 		return $args;
-	}
+	} // End woo_home_page_menu_args()
 	add_filter( 'wp_page_menu_args', 'woo_home_page_menu_args' );
-}
-
-/*-----------------------------------------------------------------------------------*/
-/* Buy Themes page
-/*-----------------------------------------------------------------------------------*/
-if ( ! function_exists( 'woothemes_more_themes_page' ) ) {
-	function woothemes_more_themes_page(){
-        ?>
-        <div class="wrap themes-page">
-	        <?php screen_icon( 'themes' ); ?><h2><?php _e( 'More WooThemes', 'woothemes' ); ?></h2>
-	        <div class="info">
-		        <a href="http://www.woothemes.com/pricing/"><?php _e( 'Join the WooThemes Club', 'woothemes' ); ?></a>
-		        <a href="http://www.woothemes.com/themes/"><?php _e( 'Themes Gallery', 'woothemes' ); ?></a>
-		        <a href="http://showcase.woothemes.com/"><?php _e( 'Theme Showcase', 'woothemes' ); ?></a>
-	        </div>
-			<?php
-				$theme_data = get_transient( 'woothemes_buy_themes' );
-				
-				if ( ! $theme_data ) {
-					$html = '';
-					
-					// Get RSS Feed(s)
-			        include_once( ABSPATH . WPINC . '/feed.php' );
-			        $rss = fetch_feed( 'http://www.woothemes.com/?feed=more_themes' );
-			        // If the RSS is failed somehow.
-			        if ( is_wp_error($rss) ) {
-			            $error = $rss->get_error_code();
-			            if( $error == 'simplepie-error' ) {
-			                //Simplepie Error
-			                echo '<div class="updated fade"><p>' . sprintf( __( 'An error has occured with the RSS feed. (%s)', 'woothemes' ), '<code>' . $error . '</code>' ) . '</p></div>';
-			            }
-			            return;
-			         }
-		
-			        $maxitems = $rss->get_item_quantity( 30 );
-			        $items = $rss->get_items( 0, 30 );
-			        
-			        if ( empty( $items ) )  {
-			        	$html .= '<li>No items</li>';
-			        } else {
-			        	foreach ( $items as $i ) {
-			        		$html .= '<li class="theme">' . $i->get_description() . '</li>' . "\n";
-			        	}
-			        	
-			        	// Cache this data for 2 weeks.
-			        	set_transient( 'woothemes_buy_themes', $html , 60*60*336 );
-			        }
-	        	
-	        		// Set the theme data to be displayed.
-	        		$theme_data = $html;
-	        	
-	        	}
-	        ?>
-	        <ul class="themes">
-	        <?php echo $theme_data; ?>
-	        </ul>
-        </div>
-
-        <?php
-	}
 }
 
 /*---------------------------------------------------------------------------------*/
@@ -2525,14 +2213,47 @@ if ( !function_exists( 'woo_encoding_convert') ) {
 /*---------------------------------------------------------------------------------*/
 /* WP Login logo */
 /*---------------------------------------------------------------------------------*/
-if ( !function_exists( 'woo_custom_login_logo') ) {
+if ( !function_exists( 'woo_custom_login_logo' ) ) {
 	function woo_custom_login_logo() {
 		$logo = get_option( 'framework_woo_custom_login_logo' );
 	    $dimensions = @getimagesize( $logo );
-		echo '<style type="text/css">.login h1 a { background-image:url( '.$logo.' ); height: '.$dimensions[1].'px; }</style>';
-	}
-	if ( get_option( 'framework_woo_custom_login_logo') )
+	    $background_size = 'background-size: auto;';
+	    if ( 0 >= $dimensions[1] ) {
+	    	$dimensions[1] = '67';
+	    	$background_size = '';
+	    }
+
+		echo '<style type="text/css">body #login h1 a { background-image:url( ' . esc_url( $logo ) . ' ); height: ' . intval( $dimensions[1] ) . 'px; width: auto; ' . $background_size . ' }</style>';
+	} // End woo_custom_login_logo()
+	if ( '' != get_option( 'framework_woo_custom_login_logo') ) {
 		add_action( 'login_head', 'woo_custom_login_logo' );
+	}
+}
+
+/*---------------------------------------------------------------------------------*/
+/* WP Login logo URL */
+/*---------------------------------------------------------------------------------*/
+if ( ! function_exists( 'woo_custom_login_logo_url' ) ) {
+	function woo_custom_login_logo_url( $text ) {
+		return get_option( 'framework_woo_custom_login_logo_url' ); // Escaping via esc_url() is done in wp-login.php.
+	} // End woo_custom_login_logo_url()
+
+	if ( '' != get_option( 'framework_woo_custom_login_logo_url' ) ) {
+		add_filter( 'login_headerurl', 'woo_custom_login_logo_url', 10 );
+	}
+}
+
+/*---------------------------------------------------------------------------------*/
+/* WP Login logo title */
+/*---------------------------------------------------------------------------------*/
+if ( ! function_exists( 'woo_custom_login_logo_title' ) ) {
+	function woo_custom_login_logo_title( $text ) {
+		return get_option( 'framework_woo_custom_login_logo_title' ); // Escaping via esc_attr() is done in wp-login.php.
+	} // End woo_custom_login_logo_title()
+
+	if ( '' != get_option( 'framework_woo_custom_login_logo_title' ) ) {
+		add_filter( 'login_headertitle', 'woo_custom_login_logo_title', 10 );
+	}
 }
 
 /*-----------------------------------------------------------------------------------*/
@@ -2579,7 +2300,6 @@ if ( !function_exists( 'woo_custom_login_logo') ) {
  */
 
 if ( ! function_exists( 'woo_pagination' ) ) {
-
 	function woo_pagination( $args = array(), $query = '' ) {
 		global $wp_rewrite, $wp_query;
 
@@ -2603,13 +2323,13 @@ if ( ! function_exists( 'woo_pagination' ) ) {
 
 		/* Set up some default arguments for the paginate_links() function. */
 		$defaults = array(
-			'base' => add_query_arg( 'paged', '%#%' ),
+			'base' => esc_url_raw( add_query_arg( 'paged', '%#%' ) ),
 			'format' => '',
 			'total' => $max_num_pages,
 			'current' => $current,
 			'prev_next' => true,
-			'prev_text' => __( '&laquo; Previous', 'woothemes' ), // Translate in WordPress. This is the default.
-			'next_text' => __( 'Next &raquo;', 'woothemes' ), // Translate in WordPress. This is the default.
+			'prev_text' => __( '&larr; Previous', 'woothemes' ), // Translate in WordPress. This is the default.
+			'next_text' => __( 'Next &rarr;', 'woothemes' ), // Translate in WordPress. This is the default.
 			'show_all' => false,
 			'end_size' => 1,
 			'mid_size' => 1,
@@ -2617,7 +2337,7 @@ if ( ! function_exists( 'woo_pagination' ) ) {
 			'type' => 'plain',
 			'before' => '<div class="pagination woo-pagination">', // Begin woo_pagination() arguments.
 			'after' => '</div>',
-			'echo' => true, 
+			'echo' => true,
 			'use_search_permastruct' => true
 		);
 
@@ -2625,24 +2345,29 @@ if ( ! function_exists( 'woo_pagination' ) ) {
 		$defaults = apply_filters( 'woo_pagination_args_defaults', $defaults );
 
 		/* Add the $base argument to the array if the user is using permalinks. */
-		if( $wp_rewrite->using_permalinks() )
+		if( $wp_rewrite->using_permalinks() && ! is_search() )
 			$defaults['base'] = user_trailingslashit( trailingslashit( get_pagenum_link() ) . 'page/%#%' );
+
+		/* Force search links to use raw permastruct for more accurate multi-word searching. */
+		if ( is_search() )
+			$defaults['use_search_permastruct'] = false;
 
 		/* If we're on a search results page, we need to change this up a bit. */
 		if ( is_search() ) {
 		/* If we're in BuddyPress, or the user has selected to do so, use the default "unpretty" URL structure. */
 			if ( class_exists( 'BP_Core_User' ) || $defaults['use_search_permastruct'] == false ) {
-
 				$search_query = get_query_var( 's' );
 				$paged = get_query_var( 'paged' );
-
-				$base = user_trailingslashit( home_url() ) . '?s=' . urlencode( $search_query ) . '&paged=%#%';
-
-				$defaults['base'] = $base;
+				$base = add_query_arg( 's', urlencode( $search_query ) );
+				$base = add_query_arg( 'paged', '%#%' );
+				$defaults['base'] = esc_url_raw( $base );
 			} else {
 				$search_permastruct = $wp_rewrite->get_search_permastruct();
-				if ( ! empty( $search_permastruct ) )
-					$defaults['base'] = user_trailingslashit( trailingslashit( urldecode( get_search_link() ) ) . 'page/%#%' );
+				if ( ! empty( $search_permastruct ) ) {
+					$base = get_search_link();
+					$base = add_query_arg( 'paged', '%#%', $base );
+					$defaults['base'] = esc_url_raw( $base );
+				}
 			}
 		}
 
@@ -2665,7 +2390,7 @@ if ( ! function_exists( 'woo_pagination' ) ) {
 			$raw_querystring[0] = str_replace( '', '', $raw_querystring[0] );
 			@$args['base'] = str_replace( $raw_querystring[0], '', $args['base'] );
 			@$args['base'] .= substr( $raw_querystring[0], 0, -1 );
-		
+
 		/* Get the paginated links. */
 		$page_links = paginate_links( $args );
 
@@ -2685,9 +2410,7 @@ if ( ! function_exists( 'woo_pagination' ) ) {
 			echo $page_links;
 		else
 			return $page_links;
-
 	} // End woo_pagination()
-
 } // End IF Statement
 
 /*-----------------------------------------------------------------------------------*/
@@ -2719,9 +2442,6 @@ if ( ! function_exists( 'woo_pagination' ) ) {
 function woo_breadcrumbs( $args = array() ) {
 	global $wp_query, $wp_rewrite;
 
-	/* Get the textdomain. */
-	$textdomain = 'woothemes';
-
 	/* Create an empty variable for the breadcrumb. */
 	$breadcrumb = '';
 
@@ -2731,18 +2451,20 @@ function woo_breadcrumbs( $args = array() ) {
 
 	/* Set up the default arguments for the breadcrumb. */
 	$defaults = array(
-		'separator' => '&gt;',
-		'before' => '<span class="breadcrumb-title">' . __( 'You are here:', $textdomain ) . '</span>',
+		'separator' => '›',
+		'before' => '<span class="breadcrumb-title">' . __( 'You are here:', 'woothemes' ) . '</span>',
 		'after' => false,
 		'front_page' => true,
-		'show_home' => __( 'Home', $textdomain ),
-		'echo' => true, 
-		'show_posts_page' => true
+		'show_home' => __( 'Home', 'woothemes' ),
+		'echo' => true,
+		'show_posts_page' => true,
+		'show_only_first_taxonomy_tree' => false
 	);
 
 	/* Allow singular post views to have a taxonomy's terms prefixing the trail. */
-	if ( is_singular() )
+	if ( is_singular() ) {
 		$defaults["singular_{$wp_query->post->post_type}_taxonomy"] = false;
+	}
 
 	/* Apply filters to the arguments. */
 	$args = apply_filters( 'woo_breadcrumbs_args', $args );
@@ -2752,7 +2474,7 @@ function woo_breadcrumbs( $args = array() ) {
 
 	/* If $show_home is set and we're not on the front page of the site, link to the home page. */
 	if ( !is_front_page() && $show_home )
-		$trail[] = '<a href="' . home_url() . '" title="' . esc_attr( get_bloginfo( 'name' ) ) . '" rel="home" class="trail-begin">' . $show_home . '</a>';
+		$trail[] = '<a href="' . esc_url( home_url() ) . '" title="' . esc_attr( get_bloginfo( 'name' ) ) . '" rel="home" class="trail-begin">' . esc_html( $show_home ) . '</a>';
 
 	/* If viewing the front page of the site. */
 	if ( is_front_page() ) {
@@ -2777,14 +2499,12 @@ function woo_breadcrumbs( $args = array() ) {
 		$post_id = absint( $wp_query->get_queried_object_id() );
 		$post_type = $post->post_type;
 		$parent = $post->post_parent;
+		$post_type_object = get_post_type_object( $post_type );
 
-		/* If a custom post type, check if there are any pages in its hierarchy based on the slug. */
-		if ( 'page' !== $post_type && 'post' !== $post_type ) {
-
-			$post_type_object = get_post_type_object( $post_type );
-
+		/* If an attachment, check if there are any pages in its hierarchy based on the slug. */
+		if ( 'attachment' == $post_type ) {
 			/* If $front has been set, add it to the $path. */
-			if ( 'post' == $post_type || 'attachment' == $post_type || ( $post_type_object->rewrite['with_front'] && $wp_rewrite->front ) )
+			if ( ( $post_type_object->rewrite['with_front'] && $wp_rewrite->front ) )
 				$path .= trailingslashit( $wp_rewrite->front );
 
 			/* If there's a slug, add it to the $path. */
@@ -2794,17 +2514,17 @@ function woo_breadcrumbs( $args = array() ) {
 			/* If there's a path, check for parents. */
 			if ( !empty( $path ) && '/' != $path )
 				$trail = array_merge( $trail, woo_breadcrumbs_get_parents( '', $path ) );
-
-			/* If there's an archive page, add it to the trail. */
-			if ( !empty( $post_type_object->has_archive ) && function_exists( 'get_post_type_archive_link' ) )
-				$trail[] = '<a href="' . get_post_type_archive_link( $post_type ) . '" title="' . esc_attr( $post_type_object->labels->name ) . '">' . $post_type_object->labels->name . '</a>';
 		}
+
+		/* If there's an archive page, add it to the trail. */
+		if ( ! empty( $post_type_object->has_archive ) )
+			$trail['post_type_archive_link'] = '<a href="' . get_post_type_archive_link( $post_type ) . '" title="' . esc_attr( $post_type_object->labels->name ) . '">' . esc_html( $post_type_object->labels->name ) . '</a>';
 
 		/* If the post type path returns nothing and there is a parent, get its parents. */
 		if ( empty( $path ) && 0 !== $parent || 'attachment' == $post_type )
 			$trail = array_merge( $trail, woo_breadcrumbs_get_parents( $parent, '' ) );
 
-		/* Toggle the display of the posts page on single blog posts. */		
+		/* Toggle the display of the posts page on single blog posts. */
 		if ( 'post' == $post_type && $show_posts_page == true && 'page' == get_option( 'show_on_front' ) ) {
 			$posts_page = get_option( 'page_for_posts' );
 			if ( $posts_page != '' && is_numeric( $posts_page ) ) {
@@ -2813,8 +2533,61 @@ function woo_breadcrumbs( $args = array() ) {
 		}
 
 		/* Display terms for specific post type taxonomy if requested. */
-		if ( isset( $args["singular_{$post_type}_taxonomy"] ) && $terms = get_the_term_list( $post_id, $args["singular_{$post_type}_taxonomy"], '', ', ', '' ) )
-			$trail[] = $terms;
+		if ( isset( $args["singular_{$post_type}_taxonomy"] ) ) {
+			$raw_terms = get_the_terms( $post_id, $args["singular_{$post_type}_taxonomy"] );
+
+			if ( is_array( $raw_terms ) && 0 < count( $raw_terms ) && ! is_wp_error( $raw_terms ) ) {
+				$links = array();
+				$count = 0;
+
+				$sorted = $raw_terms;
+
+				$terms_by_ancestor = array();
+				foreach ( $raw_terms as $k => $v ) {
+					$ancestors = array_reverse( get_ancestors( $v->term_id, $args["singular_{$post_type}_taxonomy"] ) );
+					if ( isset( $ancestors[0] ) ) {
+						$key = $ancestors[0];
+					} else {
+						$key = $v->term_id;
+					}
+					$terms_by_ancestor[$key][$v->term_id] = get_term_by( 'term_id', $v->term_id, $args["singular_{$post_type}_taxonomy"] );
+				}
+
+				if ( 0 < count( $terms_by_ancestor ) ) {
+					$sorted = array();
+					foreach ( $terms_by_ancestor as $k => $v ) {
+						if ( 0 < count( $v ) ) {
+							foreach ( $v as $i => $j ) {
+								$sorted[$i] = $j;
+							}
+						}
+					}
+					foreach ( $sorted as $k => $v ) {
+						if ( isset( $sorted[$v->parent] ) ) {
+							unset( $sorted[$v->parent] );
+						}
+					}
+				}
+
+				foreach ( $sorted as $k => $v ) {
+					$count++;
+					if ( isset( $args['show_only_first_taxonomy_tree'] ) && true == (bool)$args['show_only_first_taxonomy_tree'] && 1 < $count ) continue; // Display only the first match.
+					$parents = woo_get_term_parents( $v->term_id, $args["singular_{$post_type}_taxonomy"], true, '|-|', $v->name, array() );
+					if ( $parents != '' && ! is_wp_error( $parents ) ) {
+						$parents_arr = explode( '|-|', $parents );
+						foreach ( $parents_arr as $p ) {
+							if ( $p != '' && ! in_array( $p, $links ) ) { $links[] = $p; }
+						}
+					}
+				}
+
+				if ( 0 < count( $links ) ) {
+					foreach ( $links as $k => $v ) {
+						$trail[] = $v;
+					}
+				}
+			}
+		}
 
 		/* End with the post title. */
 		$post_title = get_the_title( $post_id ); // Force the post_id to make sure we get the correct page title.
@@ -2856,7 +2629,7 @@ function woo_breadcrumbs( $args = array() ) {
 		}
 
 		/* If viewing a post type archive. */
-		elseif ( function_exists( 'is_post_type_archive' ) && is_post_type_archive() ) {
+		elseif ( is_post_type_archive() ) {
 
 			/* Get the post type object. */
 			$post_type_object = get_post_type_object( get_query_var( 'post_type' ) );
@@ -2870,7 +2643,7 @@ function woo_breadcrumbs( $args = array() ) {
 				$path .= $post_type_object->rewrite['archive'];
 
 			/* If there's a path, check for parents. */
-			if ( !empty( $path ) )
+			if ( !empty( $path ) && '/' != $path )
 				$trail = array_merge( $trail, woo_breadcrumbs_get_parents( '', $path ) );
 
 			/* Add the post type [plural] name to the trail end. */
@@ -2879,7 +2652,6 @@ function woo_breadcrumbs( $args = array() ) {
 
 		/* If viewing an author archive. */
 		elseif ( is_author() ) {
-
 			/* If $front has been set, add it to $path. */
 			if ( !empty( $wp_rewrite->front ) )
 				$path .= trailingslashit( $wp_rewrite->front );
@@ -2898,53 +2670,51 @@ function woo_breadcrumbs( $args = array() ) {
 
 		/* If viewing a time-based archive. */
 		elseif ( is_time() ) {
-
 			if ( get_query_var( 'minute' ) && get_query_var( 'hour' ) )
-				$trail['trail_end'] = get_the_time( __( 'g:i a', $textdomain ) );
+				$trail['trail_end'] = get_the_time( __( 'g:i a', 'woothemes' ) );
 
 			elseif ( get_query_var( 'minute' ) )
-				$trail['trail_end'] = sprintf( __( 'Minute %1$s', $textdomain ), get_the_time( __( 'i', $textdomain ) ) );
+				$trail['trail_end'] = sprintf( __( 'Minute %1$s', 'woothemes' ), get_the_time( __( 'i', 'woothemes' ) ) );
 
 			elseif ( get_query_var( 'hour' ) )
-				$trail['trail_end'] = get_the_time( __( 'g a', $textdomain ) );
+				$trail['trail_end'] = get_the_time( __( 'g a', 'woothemes' ) );
 		}
 
 		/* If viewing a date-based archive. */
 		elseif ( is_date() ) {
-
 			/* If $front has been set, check for parent pages. */
 			if ( $wp_rewrite->front )
 				$trail = array_merge( $trail, woo_breadcrumbs_get_parents( '', $wp_rewrite->front ) );
 
 			if ( is_day() ) {
-				$trail[] = '<a href="' . get_year_link( get_the_time( 'Y' ) ) . '" title="' . get_the_time( esc_attr__( 'Y', $textdomain ) ) . '">' . get_the_time( __( 'Y', $textdomain ) ) . '</a>';
-				$trail[] = '<a href="' . get_month_link( get_the_time( 'Y' ), get_the_time( 'm' ) ) . '" title="' . get_the_time( esc_attr__( 'F', $textdomain ) ) . '">' . get_the_time( __( 'F', $textdomain ) ) . '</a>';
-				$trail['trail_end'] = get_the_time( __( 'j', $textdomain ) );
+				$trail[] = '<a href="' . get_year_link( get_the_time( 'Y' ) ) . '" title="' . get_the_time( esc_attr__( 'Y', 'woothemes' ) ) . '">' . get_the_time( __( 'Y', 'woothemes' ) ) . '</a>';
+				$trail[] = '<a href="' . get_month_link( get_the_time( 'Y' ), get_the_time( 'm' ) ) . '" title="' . get_the_time( esc_attr__( 'F', 'woothemes' ) ) . '">' . get_the_time( __( 'F', 'woothemes' ) ) . '</a>';
+				$trail['trail_end'] = get_the_time( __( 'j', 'woothemes' ) );
 			}
 
 			elseif ( get_query_var( 'w' ) ) {
-				$trail[] = '<a href="' . get_year_link( get_the_time( 'Y' ) ) . '" title="' . get_the_time( esc_attr__( 'Y', $textdomain ) ) . '">' . get_the_time( __( 'Y', $textdomain ) ) . '</a>';
-				$trail['trail_end'] = sprintf( __( 'Week %1$s', $textdomain ), get_the_time( esc_attr__( 'W', $textdomain ) ) );
+				$trail[] = '<a href="' . get_year_link( get_the_time( 'Y' ) ) . '" title="' . get_the_time( esc_attr__( 'Y', 'woothemes' ) ) . '">' . get_the_time( __( 'Y', 'woothemes' ) ) . '</a>';
+				$trail['trail_end'] = sprintf( __( 'Week %1$s', 'woothemes' ), get_the_time( esc_attr__( 'W', 'woothemes' ) ) );
 			}
 
 			elseif ( is_month() ) {
-				$trail[] = '<a href="' . get_year_link( get_the_time( 'Y' ) ) . '" title="' . get_the_time( esc_attr__( 'Y', $textdomain ) ) . '">' . get_the_time( __( 'Y', $textdomain ) ) . '</a>';
-				$trail['trail_end'] = get_the_time( __( 'F', $textdomain ) );
+				$trail[] = '<a href="' . get_year_link( get_the_time( 'Y' ) ) . '" title="' . get_the_time( esc_attr__( 'Y', 'woothemes' ) ) . '">' . get_the_time( __( 'Y', 'woothemes' ) ) . '</a>';
+				$trail['trail_end'] = get_the_time( __( 'F', 'woothemes' ) );
 			}
 
 			elseif ( is_year() ) {
-				$trail['trail_end'] = get_the_time( __( 'Y', $textdomain ) );
+				$trail['trail_end'] = get_the_time( __( 'Y', 'woothemes' ) );
 			}
 		}
 	}
 
 	/* If viewing search results. */
 	elseif ( is_search() )
-		$trail['trail_end'] = sprintf( __( 'Search results for &quot;%1$s&quot;', $textdomain ), esc_attr( get_search_query() ) );
+		$trail['trail_end'] = sprintf( __( 'Search results for &quot;%1$s&quot;', 'woothemes' ), esc_attr( get_search_query() ) );
 
 	/* If viewing a 404 error page. */
 	elseif ( is_404() )
-		$trail['trail_end'] = __( '404 Not Found', $textdomain );
+		$trail['trail_end'] = __( '404 Not Found', 'woothemes' );
 
 	/* Allow child themes/plugins to filter the trail array. */
 	$trail = apply_filters( 'woo_breadcrumbs_trail', $trail, $args );
@@ -2957,22 +2727,22 @@ function woo_breadcrumbs( $args = array() ) {
 
 		/* If $before was set, wrap it in a container. */
 		if ( !empty( $before ) )
-			$breadcrumb .= '<span class="trail-before">' . $before . '</span> ';
+			$breadcrumb .= '<span class="trail-before">' . wp_kses_post( $before ) . '</span> ';
 
 		/* Wrap the $trail['trail_end'] value in a container. */
 		if ( !empty( $trail['trail_end'] ) )
-			$trail['trail_end'] = '<span class="trail-end">' . $trail['trail_end'] . '</span>';
+			$trail['trail_end'] = '<span class="trail-end">' . wp_kses_post( $trail['trail_end'] ) . '</span>';
 
 		/* Format the separator. */
 		if ( !empty( $separator ) )
-			$separator = '<span class="sep">' . $separator . '</span>';
+			$separator = '<span class="sep">' . wp_kses_post( $separator ) . '</span>';
 
 		/* Join the individual trail items into a single string. */
 		$breadcrumb .= join( " {$separator} ", $trail );
 
 		/* If $after was set, wrap it in a container. */
 		if ( !empty( $after ) )
-			$breadcrumb .= ' <span class="trail-after">' . $after . '</span>';
+			$breadcrumb .= ' <span class="trail-after">' . wp_kses_post( $after ) . '</span>';
 
 		/* Close the breadcrumb trail containers. */
 		$breadcrumb .= '</div></div>';
@@ -2986,8 +2756,73 @@ function woo_breadcrumbs( $args = array() ) {
 		echo $breadcrumb;
 	else
 		return $breadcrumb;
-
 } // End woo_breadcrumbs()
+
+if ( ! function_exists( 'wf_set_default_breadcrumb_taxonomies' ) ) {
+/**
+ * Cater for WooThemes post types where we know the taxonomy. These should be done in each plugin, in future.
+ * @since  6.0.0
+ * @param  array $args Arguments.
+ * @return array       Arguments.
+ */
+function wf_set_default_breadcrumb_taxonomies ( $args ) {
+	$post_types = get_post_types( array( 'public' => true ) );
+	if ( 0 < count( $post_types ) ) {
+		foreach ( $post_types as $k => $v ) {
+			$all_taxonomies = get_object_taxonomies( $k, 'objects' );
+			$taxonomies     = array();
+
+			// Get public taxonomies
+			foreach ( $all_taxonomies as $taxonomy ) {
+				if ( $taxonomy->public ) {
+					$taxonomies[] = $taxonomy->name;
+				}
+			}
+
+			// Choose the first taxonomy, if one is present.
+			if ( $taxonomies ) {
+				$post_types[$k] = current( $taxonomies );
+			}
+
+			if ( '' != $post_types[$k] && ! isset( $args['singular_' . $k . '_taxonomy'] ) && is_singular() && ( $k == get_post_type() ) ) {
+				$args['singular_' . $k . '_taxonomy'] = $post_types[$k];
+			}
+		}
+	}
+
+	return $args;
+} // End wf_set_default_breadcrumb_taxonomies()
+}
+add_filter( 'woo_breadcrumbs_args', 'wf_set_default_breadcrumb_taxonomies' );
+
+if ( ! function_exists( 'wf_maybe_add_shop_page_link' ) ) {
+/**
+ * If WooCommerce is present, and we've got a post_type_archive_link, replace it with the shop page.
+ * @since  6.0.0
+ * @param  array $trail The breadcrumb trail array.
+ * @return array        The modified breadcrumb trail array.
+ */
+function wf_maybe_add_shop_page_link ( $trail ) {
+	if ( is_singular() && 'product' == get_post_type() && function_exists( 'wc_get_page_id' ) ) {
+		$permalinks   = get_option( 'woocommerce_permalinks' );
+		$shop_page_id = wc_get_page_id( 'shop' );
+		$shop_page    = get_post( $shop_page_id );
+
+		// If permalinks contain the shop page in the URI prepend the breadcrumb with shop
+		if ( isset( $trail['post_type_archive_link'] ) ) {
+			if ( $shop_page_id && $shop_page && strstr( $permalinks['product_base'], '/' . $shop_page->post_name ) && get_option( 'page_on_front' ) !== $shop_page_id ) {
+				$trail['post_type_archive_link'] = '<a href="' . esc_url( get_permalink( $shop_page_id ) ) . '" title="' . esc_attr( $shop_page->post_title ) . '">' . esc_html( $shop_page->post_title ) . '</a>';
+			} else {
+				if ( true == (bool)apply_filters( 'wf_hide_product_post_type_archive_link', false ) ) {
+					unset( $trail['post_type_archive_link'] );
+				}
+			}
+		}
+	}
+	return $trail;
+} // End wf_set_default_breadcrumb_taxonomies()
+}
+add_filter( 'woo_breadcrumbs_trail', 'wf_maybe_add_shop_page_link' );
 
 /*-----------------------------------------------------------------------------------*/
 /* woo_breadcrumbs_get_parents() - Retrieve the parents of the current page/post */
@@ -3003,7 +2838,6 @@ function woo_breadcrumbs( $args = array() ) {
  * @return array $trail Array of parent page links.
  */
 function woo_breadcrumbs_get_parents( $post_id = '', $path = '' ) {
-
 	/* Set up an empty trail array. */
 	$trail = array();
 
@@ -3077,12 +2911,11 @@ function woo_breadcrumbs_get_parents( $post_id = '', $path = '' ) {
 
 	/* While there's a post ID, add the post link to the $parents array. */
 	while ( $post_id ) {
-
 		/* Get the post by ID. */
 		$page = get_page( $post_id );
 
 		/* Add the formatted post link to the array of parents. */
-		$parents[]  = '<a href="' . get_permalink( $post_id ) . '" title="' . esc_attr( get_the_title( $post_id ) ) . '">' . get_the_title( $post_id ) . '</a>';
+		$parents[]  = '<a href="' . get_permalink( $post_id ) . '" title="' . esc_attr( get_the_title( $post_id ) ) . '">' . esc_html( get_the_title( $post_id ) ) . '</a>';
 
 		/* Set the parent post's parent to the post ID. */
 		$post_id = $page->post_parent;
@@ -3094,7 +2927,6 @@ function woo_breadcrumbs_get_parents( $post_id = '', $path = '' ) {
 
 	/* Return the trail of parent posts. */
 	return $trail;
-
 } // End woo_breadcrumbs_get_parents()
 
 /*-----------------------------------------------------------------------------------*/
@@ -3110,7 +2942,6 @@ function woo_breadcrumbs_get_parents( $post_id = '', $path = '' ) {
  * @return array $trail Array of links to parent terms.
  */
 function woo_breadcrumbs_get_term_parents( $parent_id = '', $taxonomy = '' ) {
-
 	/* Set up some default arrays. */
 	$trail = array();
 	$parents = array();
@@ -3138,89 +2969,46 @@ function woo_breadcrumbs_get_term_parents( $parent_id = '', $taxonomy = '' ) {
 
 	/* Return the trail of parent terms. */
 	return $trail;
-
 } // End woo_breadcrumbs_get_term_parents()
 
-/*-----------------------------------------------------------------------------------*/
-/* WordPress Admin Bar-related */
-/*-----------------------------------------------------------------------------------*/
+/**
+ * Retrieve term parents with separator.
+ *
+ * @param int $id Term ID.
+ * @param string $taxonomy.
+ * @param bool $link Optional, default is false. Whether to format with link.
+ * @param string $separator Optional, default is '/'. How to separate terms.
+ * @param bool $nicename Optional, default is false. Whether to use nice name for display.
+ * @param array $visited Optional. Already linked to terms to prevent duplicates.
+ * @return string
+ */
 
-/*-----------------------------------------------------------------------------------*/
-/* Disable WordPress Admin Bar */
-/*-----------------------------------------------------------------------------------*/
+if ( ! function_exists( 'woo_get_term_parents' ) ) {
+function woo_get_term_parents( $id, $taxonomy, $link = false, $separator = '/', $nicename = false, $visited = array() ) {
+	$chain = '';
+	$parent = get_term( $id, $taxonomy );
+	if ( is_wp_error( $parent ) )
+		return $parent;
 
-$woo_admin_bar_disable = get_option( 'framework_woo_admin_bar_disable' );
+	if ( $nicename ) {
+		$name = $parent->slug;
+	} else {
+		$name = $parent->name;
+	}
 
-if ( $woo_admin_bar_disable == 'true' ) {
-	add_filter( 'show_admin_bar', '__return_false' );
+	if ( $parent->parent && ( $parent->parent != $parent->term_id ) && !in_array( $parent->parent, $visited ) ) {
+		$visited[] = $parent->parent;
+		$chain .= woo_get_term_parents( $parent->parent, $taxonomy, $link, $separator, $nicename, $visited );
+	}
 
-	add_action( 'admin_print_scripts-profile.php', 'woo_hide_admin_bar_prefs' );
-
-	function woo_hide_admin_bar_prefs () { ?>
-	<style type="text/css">
-	    .show-admin-bar { display: none; }
-	</style>
-	<?php
-	} // End woo_hide_admin_bar_prefs()
+	if ( $link ) {
+		$chain .= '<a href="' . get_term_link( $parent, $taxonomy ) . '" title="' . esc_attr( sprintf( __( 'View %s', 'woothemes' ), $parent->name ) ) . '">' . esc_html( $parent->name ) . '</a>' . $separator;
+	} else {
+		$chain .= $name.$separator;
+	}
+	return $chain;
+} // End woo_get_term_parents()
 }
-
-/*-----------------------------------------------------------------------------------*/
-/* Enhancements to the WordPress Admin Bar */
-/*-----------------------------------------------------------------------------------*/
-
-if ( $woo_admin_bar_disable != 'true' && is_user_logged_in() && current_user_can( 'manage_options' ) ) {
-
-	$woo_admin_bar_enhancements = get_option( 'framework_woo_admin_bar_enhancements' );
-
-	if ( $woo_admin_bar_enhancements == 'true' ) {
-
-		add_action( 'admin_bar_menu', 'woo_admin_bar_menu', 20 );
-
-	}
-
-} // End IF Statement
-
-/*-----------------------------------------------------------------------------------*/
-/* woo_admin_bar_menu() - Add menu items to the admin bar. */
-/*-----------------------------------------------------------------------------------*/
-
-function woo_admin_bar_menu () {
-
-	global $wp_admin_bar, $current_user;
-    $current_user_id = $current_user->user_login;
-    $super_user = get_option( 'framework_woo_super_user' );
-
-	$theme_data = get_theme_data( get_template_directory() . '/style.css' );
-
-	$menu_label = __( 'WooThemes', 'woothemes' );
-
-	// Customise menu label to the child theme's name.
-	if ( is_array( $theme_data ) && array_key_exists( 'Name', $theme_data ) ) {
-		$menu_label = $theme_data['Name'];
-	}
-
-	// Main WooThemes Menu Item
-	$wp_admin_bar->add_menu( array( 'id' => 'woothemes', 'title' => $menu_label, 'href' => admin_url('admin.php?page=woothemes') ) );
-
-	// Theme Options
-	$wp_admin_bar->add_menu( array( 'parent' => 'woothemes', 'id' => 'woothemes-theme-options', 'title' => __( 'Theme Options', 'woothemes' ), 'href' => admin_url( 'admin.php?page=woothemes' ) ) );
-
-	// Sidebar Manager
-	if ( get_option( 'framework_woo_sbm_disable') != 'true' ) {
-		$wp_admin_bar->add_menu( array( 'parent' => 'woothemes', 'id' => 'woothemes-sbm', 'title' => __( 'Sidebar Manager', 'woothemes' ), 'href' => admin_url( 'admin.php?page=woothemes_sbm' ) ) );
-	}
-
-	if ( ( $super_user == $current_user_id ) || empty( $super_user ) ) {
-
-		// Framework Settings
-		$wp_admin_bar->add_menu( array( 'parent' => 'woothemes', 'id' => 'woothemes-framework-settings', 'title' => __( 'Framework Settings', 'woothemes' ), 'href' => admin_url( 'admin.php?page=woothemes_framework_settings' ) ) );
-
-		// Update Framework
-		$wp_admin_bar->add_menu( array( 'parent' => 'woothemes', 'id' => 'woothemes-update-framework', 'title' => __( 'Update Framework', 'woothemes' ), 'href' => admin_url( 'admin.php?page=woothemes_framework_update' ) ) );
-
-	} // End IF Statement
-
-} // End woo_admin_bar_menu()
 
 /*-----------------------------------------------------------------------------------*/
 /* woo_prepare_category_ids_from_option()
@@ -3233,9 +3021,7 @@ function woo_admin_bar_menu () {
 /*-----------------------------------------------------------------------------------*/
 
 if ( ! function_exists( 'woo_prepare_category_ids_from_option' ) ) {
-
 	function woo_prepare_category_ids_from_option ( $option ) {
-
 		$cats = array();
 
 		$stored_cats = get_option( $option );
@@ -3260,165 +3046,24 @@ if ( ! function_exists( 'woo_prepare_category_ids_from_option' ) ) {
 		}
 
 		return $cats;
-
 	} // End woo_prepare_category_ids_from_option()
-
 }
 
 /*-----------------------------------------------------------------------------------*/
 /* Move tracking code from footer to header */
 /*-----------------------------------------------------------------------------------*/
-	
-	add_action( 'init', 'woo_move_tracking_code', 20 );
 
-	function woo_move_tracking_code () {
-		$move_code = get_option( 'framework_woo_move_tracking_code' );
-		
-		if ( ! is_admin() && isset( $move_code ) && ( $move_code == 'true' ) ) {
-			remove_action( 'wp_footer', 'woo_analytics' );
-			add_action( 'wp_head', 'woo_analytics', 10 );
-		}
-	} // End woo_move_tracking_code()
+add_action( 'init', 'woo_move_tracking_code', 20 );
 
-/*-----------------------------------------------------------------------------------*/
-/* Timthumb Update Page and Functions */
-/*-----------------------------------------------------------------------------------*/
+function woo_move_tracking_code () {
+	$move_code = get_option( 'framework_woo_move_tracking_code' );
 
-function woothemes_timthumb_update_page(){
-        
-        // Setup data
-        $timthumb_update = get_option('woo_timthumb_update');
-        $url = admin_url( 'admin.php?page=woothemes_framework_update' );
-       	
-       	// Do the update
-       	if (isset($_POST['woo_update_save'])) {
-       		
-       		// Read in the old file
-       		$filename = locate_template( 'thumb.php' );
-       		
-       		// If File exists
-       		if ( $filename != '' ) {
-       			
-       			// Call function test
-				$file_read = woo_check_if_thumbs_are_equal($filename);
-				$file_open = true;
-       			$file_write = false;
-       				
-				// File was readable
-				if ($file_read) {
-					// Open file
-					$file = fopen($filename, "w") or $file_open = false; 
-					// File opened successfully
-					if ($file_open) {
-						// New File Contents
-						$new_file_contents = woo_thumb_new_contents();
-						$fwrite = fwrite($file, $new_file_contents);
-        				if ($fwrite === false) {
-            				// Write Fail
-            				$file_write = false;
-        				} else {
-        					// Write Success
-        					$file_write = true;
-        				} // End If Statement
-						fclose($file); 
-					} // End If Statement
-					
-					if ($file_open && $file_write) {
-						update_option('woo_timthumb_update', 'true');
-					} // End If Statement
-				} else {
-					echo 'An error occurred while reading your current thumb.php';
-				} // End If Statement
-			
-       		} else {
-       			echo 'File does not exist.';
-       		} // End If Statement
-       		       	
-       	}
-       	// Get the setting for update
-       	$timthumb_update = get_option('woo_timthumb_update');
-       
-        ?>
-            <div class="wrap themes-page">
-
-            <?php
-            $localversion = get_option( 'woo_framework_version' );
-            $remoteversion = woo_get_fw_version();
-            // Test if new version
-            $upd = false;
-			$loc = explode( '.',$localversion);
-			$rem = explode( '.',$remoteversion);
-
-            if( $loc[0] < $rem[0] )
-            	$upd = true;
-            elseif ( $loc[1] < $rem[1] )
-            	$upd = true;
-            elseif( $loc[2] < $rem[2] )
-            	$upd = true;
-
-            ?>
-            <div class="icon32" id="icon-tools"><br></div>
-            <h2>TimThumb Update</h2>
-            <span style="display:none"><?php echo $method; ?></span>
-            <form method="post"  enctype="multipart/form-data" id="wooform" action="<?php /* echo $url; */ ?>">
-
-                <?php if( $upd || ( $timthumb_update == '' ) ) { ?>
-                <?php wp_nonce_field( 'update-options' ); ?>
-                <h3>A new version of TimThumb is available.</h3>
-                <p>This updater will remove the old version of TimThumb (thumb.php) in your theme folder, and use the new TimThumb in the WooFramework.</p>
-
-                <input type="submit" class="button" value="Update Timthumb" />
-                <?php } elseif ($file_open && $file_write) { ?> 
-                <h3>Thank you for updating your TimThumb. This section will now disable itself.</h3>
-                <?php } else { ?>
-                <h3>Your TimThumb has been updated already.</h3>
-                <?php } ?>
-                <input type="hidden" name="woo_update_save" value="save" />
-                
-            </form>
-            </div>
-            <?php
-}
-
-function woo_check_if_thumbs_are_equal($filename, $override = false) {
-	
-	$file_open = true;
-	$file_read = false;
-	
-	// New File Contents
-	$new_file_contents = woo_thumb_new_contents(); 
-	
-	// Check file contents
-	$file = fopen($filename, "r") or $file_open = false;
-				
-	// File opened successfully
-	if ($file_open) {
-	    $current_file_contents = fread($file, filesize($filename));
-	    fclose($file);
-	    if ($current_file_contents == $new_file_contents) {
-	    	// files are equal - DONT DO THE UPDATE
-	    	$file_read = false;
-	    } else {
-	    	// files are not equal - DO THE UPDATE
-	    	$file_read = true;
-	    } // End If Statement
-	} // End If Statement
-	
-	if ($override && !$file_read) {
-		update_option('woo_timthumb_update', 'true');
+	if ( ! is_admin() && isset( $move_code ) && ( $move_code == 'true' ) ) {
+		remove_action( 'wp_footer', 'woo_analytics' );
+		add_action( 'wp_head', 'woo_analytics', 10 );
 	}
-	
-	return $file_read;
-				
-}
+} // End woo_move_tracking_code()
 
-function woo_thumb_new_contents() {
-	// New File Contents
-    $new_file_contents = 
-"<?php" . "\n" . "/*" . "\n" . "\n" . "THUMB.PHP HAS MOVED" . "\n" . "" . "\n" . "TimThumb (thumb.php) has been moved to the WooFramework (/functions/thumb.php)." . "\n" . "\n" . "You can create a config file in your theme folder called timthumb-config.php and" . "\n" . "copy over any definitions that you want to customize." . "\n" . "\n" . "*/" . "\n" . "echo 'TimThumb (thumb.php) is now in the <a href=\"functions/thumb.php\">WooFramework</a>';" . "\n" . "?>";
-	
-	return $new_file_contents;
-}
 
 /*-----------------------------------------------------------------------------------*/
 /* woo_get_dynamic_value() */
@@ -3430,15 +3075,15 @@ function woo_thumb_new_contents() {
 /*-----------------------------------------------------------------------------------*/
 
 function woo_get_dynamic_values ( $settings ) {
-	global $woo_options;
-	
-	if ( is_array( $woo_options ) ) {
+	$all = WF()->settings->get_all();
+	if ( is_array( $all ) &&  0 < count( $all ) ) {
 		foreach ( $settings as $k => $v ) {
-			if ( isset( $woo_options['woo_' . $k] ) && ( $woo_options['woo_' . $k] != '' ) ) { $settings[$k] = $woo_options['woo_' . $k]; }
+			$k = str_replace( 'woo_', '', $k ); // Make sure we remove the prefix.
+			if ( isset( $all['woo_' . $k] ) ) { $settings[$k] = $all['woo_' . $k]; }
 		}
 	}
-	
-	return $settings;
+
+	return (array)apply_filters( 'woo_get_dynamic_values', $settings );
 } // End woo_get_dynamic_values()
 
 /*-----------------------------------------------------------------------------------*/
@@ -3450,154 +3095,153 @@ function woo_get_dynamic_values ( $settings ) {
 /* @param array $args
 /* @return array $posts
 /*-----------------------------------------------------------------------------------*/
- 
+
  function woo_get_posts_by_taxonomy ( $args = null ) {
  	global $wp_query;
- 	
+
  	$posts = array();
- 	
+
  	/* Parse arguments, and declare individual variables for each. */
- 	
+
  	$defaults = array(
- 						'limit' => 5, 
- 						'post_type' => 'any', 
- 						'taxonomies' => 'post_tag, category', 
- 						'specific_terms' => '', 
- 						'relationship' => 'OR', 
- 						'order' => 'DESC', 
- 						'orderby' => 'date', 
- 						'operator' => 'IN', 
+ 						'limit' => 5,
+ 						'post_type' => 'any',
+ 						'taxonomies' => 'post_tag, category',
+ 						'specific_terms' => '',
+ 						'relationship' => 'OR',
+ 						'order' => 'DESC',
+ 						'orderby' => 'date',
+ 						'operator' => 'IN',
  						'exclude' => ''
  					);
- 					
+
  	$args = wp_parse_args( $args, $defaults );
- 	
+
  	extract( $args, EXTR_SKIP );
- 	
+
  	// Make sure the order value is safe.
  	if ( ! in_array( $order, array( 'ASC', 'DESC' ) ) ) { $order = $defaults['order']; }
- 	
+
  	// Make sure the orderby value is safe.
  	if ( ! in_array( $orderby, array( 'none', 'id', 'author', 'title', 'date', 'modified', 'parent', 'rand', 'comment_count', 'menu_order' ) ) ) { $orderby = $defaults['orderby']; }
- 	
+
  	// Make sure the operator value is safe.
  	if ( ! in_array( $operator, array( 'IN', 'NOT IN', 'AND' ) ) ) { $orderby = $defaults['operator']; }
- 	
+
  	// Convert our post types to an array.
  	if ( ! is_array( $post_type ) ) { $post_type = explode( ',', $post_type ); }
- 	
+
  	// Convert our taxonomies to an array.
  	if ( ! is_array( $taxonomies ) ) { $taxonomies = explode( ',', $taxonomies ); }
- 	
+
  	// Convert exclude to an array.
  	if ( ! is_array( $exclude ) && ( $exclude != '' ) ) { $exclude = explode( ',', $exclude ); }
- 	
+
  	if ( ! count( (array)$taxonomies ) ) { return; }
- 	
+
  	// Clean up our taxonomies for use in the query.
  	if ( count( $taxonomies ) ) {
  		foreach ( $taxonomies as $k => $v ) {
  			$taxonomies[$k] = trim( $v );
  		}
  	}
- 	
+
  	// Determine which terms we're going to relate to this entry.
  	$related_terms = array();
- 	
+
  	foreach ( $taxonomies as $t ) {
  		$terms = get_terms( $t, 'orderby=id&hide_empty=1' );
- 		
+
  		if ( ! empty( $terms ) ) {
  			foreach ( $terms as $k => $v ) {
  				$related_terms[$t][$v->term_id] = $v->slug;
  			}
  		}
  	}
- 	
+
  	// If specific terms are available, use those.
  	if ( ! is_array( $specific_terms ) ) { $specific_terms = explode( ',', $specific_terms ); }
- 	
+
  	if ( count( $specific_terms ) ) {
  		foreach ( $specific_terms as $k => $v ) {
  			$specific_terms[$k] = trim( $v );
  		}
  	}
- 	
+
  	// Look for posts with the same terms.
- 	
+
  	// Setup query arguments.
  	$query_args = array();
- 	
+
  	if ( $post_type ) { $query_args['post_type'] = $post_type; }
- 	
+
  	if ( $limit ) {
  		$query_args['posts_per_page'] = $limit;
  		// $query_args['nopaging'] = true;
  	}
- 	
+
  	// Setup specific posts to exclude.
  	if ( count( $exclude ) > 0 ) {
  		$query_args['post__not_in'] = $exclude;
  	}
- 	
+
  	$query_args['order'] = $order;
  	$query_args['orderby'] = $orderby;
- 	
+
  	$query_args['tax_query'] = array();
- 	
+
  	// Setup for multiple taxonomies.
- 	
+
  	if ( count( $related_terms ) > 1 ) {
  		$query_args['tax_query']['relation'] = $args['relationship'];
  	}
- 	
+
  	// Add the taxonomies to the query arguments.
- 	
+
  	foreach ( (array)$related_terms as $k => $v ) {
  		$terms_for_search = array_values( $v );
- 	
+
  		if ( count( $specific_terms ) ) {
  			$specific_terms_by_tax = array();
- 			
+
  			foreach ( $specific_terms as $i => $j ) {
  				if ( in_array( $j, array_values( $v ) ) ) {
  					$specific_terms_by_tax[] = $j;
  				}
  			}
- 			
+
  			if ( count( $specific_terms_by_tax ) ) {
  				$terms_for_search = $specific_terms_by_tax;
  			}
  		}
- 	
+
  		$query_args['tax_query'][] = array(
 			'taxonomy' => $k,
 			'field' => 'slug',
-			'terms' => $terms_for_search, 
+			'terms' => $terms_for_search,
 			'operator' => $operator
 		);
  	}
- 	
+
  	if ( empty( $query_args['tax_query'] ) ) { return; }
- 	
+
  	$query_saved = $wp_query;
- 	
+
  	$query = new WP_Query( $query_args );
- 	
+
  	if ( $query->have_posts() ) {
  		while( $query->have_posts() ) {
  			$query->the_post();
- 			
+
  			$posts[] = $query->post;
  		}
  	}
- 	
+
  	$query = $query_saved;
- 	
+
  	wp_reset_query();
- 
+
  	return $posts;
- 
  } // End woo_get_posts_by_taxonomy()
 
 /*-----------------------------------------------------------------------------------*/
@@ -3605,7 +3249,7 @@ function woo_get_dynamic_values ( $settings ) {
 /*-----------------------------------------------------------------------------------*/
 
 add_filter( 'template_include', 'woo_load_posts_page_blog_template', 10 );
-	
+
 if ( ! function_exists( 'woo_load_posts_page_blog_template' ) ) {
 	function woo_load_posts_page_blog_template ( $template ) {
 		if ( 'page' == get_option( 'show_on_front' ) && ( '' != get_option( 'page_for_posts' ) ) && is_home() ) {
@@ -3617,67 +3261,447 @@ if ( ! function_exists( 'woo_load_posts_page_blog_template' ) ) {
 }
 
 /*-----------------------------------------------------------------------------------*/
-/* PressTrends API Integration */
-/*-----------------------------------------------------------------------------------*/
-
-/**
- * woo_presstrends function.
- *
- * @description Send data to the PressTrends API.
- * @access public
- * @return void
- */
-
-if ( defined( 'WOO_PRESSTRENDS_THEMEKEY' ) ) {
-	if ( get_option( 'framework_woo_presstrends_disable', 'false' ) != 'true' ) {
-		add_action( 'admin_footer', 'woo_presstrends', 100 );
-	}
-}
-
-function woo_presstrends () {
-	if ( ! defined( 'WOO_PRESSTRENDS_THEMEKEY' ) ) { return; }
-	
-	// Add your PressTrends API Keys
-	$api_key = 'ypvilflyjb7yyht8as1u2k0no3rxbgl2p4a9';
-	$auth = WOO_PRESSTRENDS_THEMEKEY;
-
-	// Check if we have cached data.
-	$data = get_transient( 'woo_presstrends_data' );
-
-	if ( ! $data || $data == '' ) {
-		// Don't edit below
-		$api_base = 'http://api.presstrends.io/index.php/api/sites/add/auth/';
-		
-		// Run setup
-		$url = $api_base . $auth . '/api/' . $api_key . '/';
-		$data = array();
-		$count_posts = wp_count_posts();
-		$comments_count = wp_count_comments();
-		$theme_data = get_theme_data( get_template_directory() . '/style.css' );
-		$plugin_count = count( get_option( 'active_plugins' ) );
-		$data['url'] = stripslashes( str_replace( array( 'http://', '/', ':' ), '', site_url() ) );
-		$data['posts'] = $count_posts->publish;
-		$data['comments'] = $comments_count->total_comments;
-		$data['theme_version'] = $theme_data['Version'];
-		$data['theme_name'] = str_replace( ' ', '', get_bloginfo( 'name' ) );
-		$data['plugins'] = $plugin_count;
-		
-		foreach ( $data as $k => $v ) {
-			$url .= $k . '/' . $v . '/';
-		}
-		
-		// Perform the remote request.
-		$response = wp_remote_get( $url );
-		
-		if ( is_wp_error( $response ) || wp_remote_retrieve_response_code( $response ) != 200 ) {
-			// Silence is golden.
-		} else {
-			set_transient( 'woo_presstrends_data', $data, 60*60*24 );
-		}
-	}
-} // End woo_presstrends()
-
-/*-----------------------------------------------------------------------------------*/
 /* THE END */
 /*-----------------------------------------------------------------------------------*/
+
+/*-----------------------------------------------------------------------------------*/
+/* WooDojo Download Banner */
+/*-----------------------------------------------------------------------------------*/
+
+if ( is_admin() && current_user_can( 'install_plugins' ) && ! class_exists( 'WooDojo' ) ) {
+	add_action( 'wooframework_container_inside', 'wooframework_add_woodojo_banner' );
+}
+
+add_action( 'wp_ajax_wooframework_banner_close', 'wooframework_ajax_banner_close' );
+
+/**
+ * Add a WooDojo banner on the Theme Options screen.
+ * @since 5.3.4
+ * @return void
+ */
+function wooframework_add_woodojo_banner () {
+	if ( get_user_setting( 'wooframeworkhidebannerwoodojo', '0' ) == '1' ) { return; }
+
+	$close_url = wp_nonce_url( admin_url( 'admin-ajax.php?action=wooframework_banner_close&banner=woodojo' ), 'wooframework_banner_close' );
+	$html = '';
+
+	$html .= '<div id="woodojo-banner" class="wooframework-banner">' . "\n";
+	$html .= '<span class="main">' . __( 'Enhance your theme with WooDojo.', 'woothemes' ) . '</span>' . "\n";
+	$html .= '<span>' . __( 'WooDojo is a powerful WooThemes features suite for enhancing your website. Learn more.', 'woothemes' ) . '</span>' . "\n";
+	$html .= '<a class="button-primary" href="' . esc_url( 'http://woothemes.com/woodojo/' ) . '" title="' . esc_attr__( 'Get WooDojo', 'woothemes' ) . '" target="_blank">' . __( 'Get WooDojo', 'woothemes' ) . '</a>' . "\n";
+	$html .= '<span class="close-banner"><a href="' . $close_url . '">' . __( 'Close', 'woothemes' ) . '</a></span>' . "\n";
+	$html .= '</div>' . "\n";
+
+	echo $html;
+} // End wooframework_add_woodojo_banner()
+
+/**
+ * wooframework_ajax_banner_close function.
+ *
+ * @access public
+ * @since 1.0.0
+ */
+function wooframework_ajax_banner_close () {
+	if( ! current_user_can( 'install_plugins' ) ) wp_die( __( 'You do not have sufficient permissions to access this page.', 'woothemes' ) );
+
+	if( ! check_admin_referer( 'wooframework_banner_close' ) ) wp_die( __( 'You have taken too long. Please go back and retry.', 'woothemes' ) );
+
+	$banner = ( isset( $_GET['banner'] ) ) ? $_GET['banner'] : '';
+
+	if( ! $banner ) die;
+
+	// Run the update.
+	$response = set_user_setting( 'wooframeworkhidebanner' . $banner, '1' );
+
+	$sendback = remove_query_arg( array( 'trashed', 'untrashed', 'deleted', 'ids' ), wp_get_referer() );
+	wp_safe_redirect( esc_url_raw( $sendback ) );
+	exit;
+} // End toggle_notifications_status()
+
+/*-----------------------------------------------------------------------------------*/
+/* Timthumb Detection Banner */
+/*-----------------------------------------------------------------------------------*/
+
+if ( is_admin() && current_user_can( 'install_plugins' ) ) {
+	add_action( 'wooframework_wooframeworksettings_container_inside', 'wooframework_add_wootimthumb_banner' );
+	add_action( 'wooframework_container_inside', 'wooframework_add_wootimthumb_banner' );
+}
+
+/**
+ * Add a Timthumb Detection banner on all WooThemes Options screens.
+ * @since 5.4.0
+ * @return void
+ */
+function wooframework_add_wootimthumb_banner () {
+	if ( get_user_setting( 'wooframeworkhidebannerwootimthumb', '0' ) == '1' ) { return; }
+
+	// Test for old timthumb scripts
+	$thumb_php_test = file_exists(  get_template_directory() . '/thumb.php' );
+	$timthumb_php_test = file_exists(  get_template_directory() . '/timthumb.php' );
+
+	if ( $thumb_php_test || $timthumb_php_test ) {
+		$theme_dir = str_replace( WP_CONTENT_DIR, '', get_template_directory() );
+		$close_url = wp_nonce_url( admin_url( 'admin-ajax.php?action=wooframework_banner_close&banner=wootimthumb' ), 'wooframework_banner_close' );
+		$html = '';
+
+		$html .= '<div id="woodeprecate-banner" class="wooframework-banner">' . "\n";
+		$html .= '<span class="main">' . __( 'ATTENTION: Insecure Version of Timthumb Image Resize Script Detected', 'woothemes' ) . '</span>' . "\n";
+		$html .= '<span>' . __( "A possible old version of the TimThumb script was detected in your theme folder. Please remove the following files from your theme as a security precaution", 'woothemes' ) . ':</span>' . "\n";
+		if ( $thumb_php_test ) { $html .= '<span><strong>- thumb.php</strong> ( found at ' . $theme_dir . '/thumb.php' . ' )</span>' . "\n"; }
+    	if ( $timthumb_php_test ) { $html .= '<span><strong>- timthumb.php</strong> ( found at ' . $theme_dir . '/timthumb.php' . ' )</span>' . "\n"; }
+		$html .= '<span class="close-banner"><a href="' . $close_url . '">' . __( 'Close', 'woothemes' ) . '</a></span>' . "\n";
+		$html .= '</div>' . "\n";
+
+		echo $html;
+	} else {
+		return;
+	}
+
+} // End wooframework_add_wootimthumb_banner()
+
+/*-----------------------------------------------------------------------------------*/
+/* Static Front Page Detection Banner */
+/*-----------------------------------------------------------------------------------*/
+
+if ( is_admin() && current_user_can( 'manage_options' ) && ( 0 < intval( get_option( 'page_on_front' ) ) ) ) {
+	add_action( 'wooframework_container_inside', 'wooframework_add_static_front_page_banner' );
+}
+
+/**
+ * Add a Static Front Page Detection banner on all WooThemes Options screens.
+ * @since 5.5.2
+ * @return void
+ */
+function wooframework_add_static_front_page_banner () {
+	if ( get_user_setting( 'wooframeworkhidebannerstaticfrontpage', '0' ) == '1' ) { return; }
+	$theme_data = wooframework_get_theme_version_data();
+	$close_url = wp_nonce_url( admin_url( 'admin-ajax.php?action=wooframework_banner_close&banner=staticfrontpage' ), 'wooframework_banner_close' );
+	$html = '';
+	$html .= '<div id="staticfrontpage-banner" class="wooframework-banner">' . "\n";
+	$html .= '<span class="main">' . sprintf( __( 'You have setup a static front page in %1$sSettings > Reading%2$s.  Please set it to show "Your latest posts" if you want to display the default homepage in %3$s.', 'woothemes' ), '<strong><a href="' . esc_url( admin_url( 'options-reading.php' ) ) . '">', '</a></strong>', $theme_data['theme_name'], '<strong>', '</strong>' ) . '</span>' . "\n";
+	$html .= '<span class="close-banner"><a href="' . $close_url . '">' . __( 'Close', 'woothemes' ) . '</a></span>' . "\n";
+	$html .= '</div>' . "\n";
+
+	echo $html;
+} // End wooframework_add_static_front_page_banner()
+
+/**
+ * Get the version data for the currently active theme.
+ * @since  5.4.2
+ * @return array [theme_version, theme_name, framework_version, is_child, child_theme_version, child_theme_name]
+ */
+if ( ! function_exists( 'wooframework_get_theme_version_data' ) ) {
+function wooframework_get_theme_version_data () {
+	$response = array(
+					'theme_version' => '',
+					'theme_name' => '',
+					'framework_version' => get_option( 'woo_framework_version' ),
+					'is_child' => is_child_theme(),
+					'child_theme_version' => '',
+					'child_theme_name' => ''
+					);
+
+	if ( function_exists( 'wp_get_theme' ) ) {
+		$theme_data = wp_get_theme();
+		if ( true == $response['is_child'] ) {
+			$response['theme_version'] = $theme_data->parent()->Version;
+			$response['theme_name'] = $theme_data->parent()->Name;
+
+			$response['child_theme_version'] = $theme_data->Version;
+			$response['child_theme_name'] = $theme_data->Name;
+		} else {
+			$response['theme_version'] = $theme_data->Version;
+			$response['theme_name'] = $theme_data->Name;
+		}
+	} else {
+		$theme_data = get_theme_data( get_template_directory() . '/style.css' );
+		$response['theme_version'] = $theme_data['Version'];
+		$response['theme_name'] = $theme_data['Name'];
+
+		if ( true == $response['is_child'] ) {
+			$theme_data = get_theme_data( get_stylesheet_directory() . '/style.css' );
+			$response['child_theme_version'] = $theme_data['Version'];
+			$response['child_theme_name'] = $theme_data['Name'];
+		}
+	}
+
+	return $response;
+} // End wooframework_get_theme_version_data()
+}
+
+if ( ! function_exists( 'wooframework_display_theme_version_data' ) ) {
+/**
+ * Display the version data for the currently active theme.
+ * @since  5.4.2
+ * @return void
+ */
+function wooframework_display_theme_version_data ( $echo = true ) {
+	$data = wooframework_get_theme_version_data();
+	$html = '';
+
+	// Theme Version
+	if ( true == $data['is_child'] ) {
+		$html .= '<span class="theme">' . esc_html( $data['child_theme_name'] . ' ' . $data['child_theme_version'] ) . '</span>' . "\n";
+		$html .= '<span class="parent-theme">' . esc_html( $data['theme_name'] . ' ' . $data['theme_version'] ) . '</span>' . "\n";
+	} else {
+		$html .= '<span class="theme">' . esc_html( $data['theme_name'] . ' ' . $data['theme_version'] ) . '</span>' . "\n";
+	}
+
+	// Framework Version
+	$html .= '<span class="framework">' . esc_html( sprintf( __( 'Framework %s', 'woothemes' ), $data['framework_version'] ) ) . '</span>' . "\n";
+
+	if ( true == $echo ) { echo $html; } else { return $html; }
+} // End wooframework_display_theme_version_data()
+}
+
+if ( ! function_exists( 'wooframework_load_google_fonts' ) ) {
+/**
+ * Load relevant Google Fonts for use in the "Custom Typography" shortcode.
+ * @since  5.5.5
+ * @return void
+ */
+function wooframework_load_google_fonts() {
+	global $woo_used_google_fonts;
+
+	if( $woo_used_google_fonts && is_array( $woo_used_google_fonts ) ) {
+		$fonts = '';
+		$c = 0;
+		foreach( $woo_used_google_fonts as $font ) {
+			if( $c > 0 ) {
+				$fonts .= '|';
+			} else {
+				++$c;
+			}
+			$fonts .= $font;
+		}
+
+		if( '' != $fonts ) {
+			woo_shortcode_typography_loadgooglefonts( $fonts , 'woo-used-google-fonts' );
+		}
+	}
+} // End wooframework_load_google_fonts()
+}
+add_action( 'wp_footer', 'wooframework_load_google_fonts' );
+
+if ( ! function_exists( 'woo_trim_excerpt' ) ) {
+/**
+ * A spin off of wp_trim_excerpt(), primarily used for additional control when removing the dropcap shortcode from excerpts.
+ * @since  6.0.0
+ * @return void
+ */
+function woo_trim_excerpt ( $text ) {
+	$text = strip_shortcodes( $text );
+
+	/** This filter is documented in wp-includes/post-template.php */
+	$text = apply_filters( 'the_content', $text );
+	$text = str_replace(']]>', ']]&gt;', $text);
+
+	/**
+	 * Filter the number of words in an excerpt.
+	 *
+	 * @since 2.7.0
+	 *
+	 * @param int $number The number of words. Default 55.
+	 */
+	$excerpt_length = apply_filters( 'excerpt_length', 55 );
+	/**
+	 * Filter the string in the "more" link displayed after a trimmed excerpt.
+	 *
+	 * @since 2.9.0
+	 *
+	 * @param string $more_string The string shown within the more link.
+	 */
+	$excerpt_more = apply_filters( 'excerpt_more', ' ' . '[&hellip;]' );
+	$text = wp_trim_words( $text, $excerpt_length, $excerpt_more );
+
+	return $text;
+} // End woo_trim_excerpt()
+}
+
+/*-----------------------------------------------------------------------------------*/
+/* Remove Timthumb  */
+/*-----------------------------------------------------------------------------------*/
+
+if ( ! function_exists( 'woo_retire_timthumb_menu' ) ) {
+	/**
+	 * woo_remove_timthumb_menu adds menu item for timthumb removal page
+	 * @since  6.1.0
+	 * @return void
+	 */
+	function woo_remove_timthumb_menu() {
+		global $current_user;
+		$current_user_id = $current_user->user_login;
+		$super_user = apply_filters( 'wf_super_user', '' );
+		$unconverted = get_option( 'woo_timthumb_retired', 'false' );
+		// Update Framework Menu Item
+		if( $super_user == $current_user_id || empty( $super_user ) && ( $unconverted == 'false' ) ) {
+			$timthumb_retire_page = add_submenu_page( 'woothemes', 'Remove Timthumb', 'Remove Timthumb', 'manage_options', 'woothemes_remove_timthumb', 'woothemes_remove_timthumb_page' );
+		} // End If Statement
+	} // End woo_remove_timthumb_menu()
+	add_action( 'wf_admin_menu_after', 'woo_remove_timthumb_menu', 10 );
+} // End If Statement
+
+if ( ! function_exists( 'woothemes_remove_timthumb_page' ) ) {
+	/**
+	 * woothemes_remove_timthumb_page removal admin interface
+	 * @since  6.1.0
+	 * @return void
+	 */
+	function woothemes_remove_timthumb_page() {
+		$unconverted = get_option( 'woo_timthumb_retired', 'false' );
+		$done_processing = 0;
+	    $url = admin_url( 'admin.php?page=woothemes_remove_timthumb' );
+	    ?>
+	    <div class="wrap themes-page">
+		    <?php screen_icon( 'tools' ); ?>
+		    <h2><?php _e( 'Remove Timthumb', 'woothemes' ); ?></h2>
+
+		    <?php if ( isset( $_GET['action'] ) && $_GET['action'] == 'update' && isset( $_GET['n'] ) && intval( $_GET['n'] ) >= 0 ) { ?>
+
+			    <?php $n = intval( $_GET['n'] ); ?>
+
+				<h3><?php _e( 'Processing Updates......', 'woothemes' ); ?></h3>
+
+				<p><?php $done_processing = woo_process_old_custom_fields( $n ); ?></p>
+
+				<?php if ( $done_processing === -1 ) { ?>
+
+					<p><?php _e( 'If your browser doesn&#8217;t start loading the next page automatically, click this link:', 'woothemes' ); ?>&nbsp;&nbsp;<a class="button" href="<?php echo $url; ?>&action=update&n=<?php echo ($n + 1) ?>"><?php _e( 'Next', 'woothemes' ); ?></a></p>
+					<script type='text/javascript'>
+					<!--
+					function woo_remove_timthumb_nextpage() {
+						location.href = "<?php echo $url; ?>&action=update&n=<?php echo ($n + 1) ?>";
+					}
+					setTimeout( "woo_remove_timthumb_nextpage()", 250 );
+					//-->
+					</script><?php
+
+				} else { ?>
+					<?php update_option( 'woo_resize', 'false' ); ?>
+					<?php update_option( 'woo_timthumb_retired', 'true' ); ?>
+					<p><strong><?php _e( 'Update completed successfully!', 'woothemes' ); ?></strong></p>
+
+				<?php } // End If Statement ?>
+
+			<?php } else { ?>
+
+				<form method="GET" id="wooform" action="<?php echo $url; ?>&action=update">
+
+		            <?php if( 'false' == $unconverted  ) { ?>
+			            <h3><?php _e( 'Timthumb has officially been discontinued.', 'woothemes' ); ?></h3>
+			            <p><?php _e( 'This updater will convert any existing custom fields that TimThumb used for Posts into Featured Images, and will remove the Theme Options settings for Timthumb that could be found under the Dynamic Images tab.', 'woothemes' ); ?></p>
+			            <p><strong><?php _e( 'We recommend backing up your theme files and updating WordPress to latest version before proceeding.', 'woothemes' ); ?></strong></p>
+			            <input type="hidden" name="page" value="woothemes_remove_timthumb" />
+			            <input type="hidden" name="action" value="update" />
+			            <input type="hidden" name="n" value="0" />
+			            <input type="submit" class="button" value="Remove Timthumb" />
+		            <?php } else { ?>
+		            	<h3>You have already removed Timthumb! Thanks for updating!</h3>
+		            <?php } ?>
+		             <p><a href="<?php echo esc_url( 'http://develop.woothemes.com/themes/2014/10/01/timthumb-removal-ben-gillbanks-announced-last-weekend-that/' ); ?>" title="<?php esc_attr_e( 'Before updating, we recommend reading the release notes on our develop blog', 'woothemes' ); ?>"><strong><?php _e( 'Read the Release Notes', 'woothemes' ); ?></strong></a></p>
+		        </form>
+
+			<?php } // End If Statement ?>
+
+	    </div>
+
+	    <?php
+	} // End woothemes_remove_timthumb_page()
+} // End If Statement
+
+if ( ! function_exists( 'woo_process_old_custom_fields' ) ) {
+	/**
+	 * woo_process_old_custom_fields converts old custom fields into featured images
+	 * @since  6.1.0
+	 * @param  integer $n offset incrementer
+	 * @return integer post id or negative value for fail
+	 */
+	function woo_process_old_custom_fields( $n = 0 ) {
+		$processed_posts = 0;
+		// The Query
+		$query_args['posts_per_page'] = 5;
+		$query_args['offset'] = $n * 5;
+		$query_args['post_type'] = array( 'post' );
+		$query_args['post_status'] = 'any';
+		$the_query = new WP_Query($query_args);
+		// Total count of query
+		$found_posts = intval( $the_query->found_posts );
+
+		if ($the_query->have_posts()) {
+			$count = 0;
+			$processed_posts++;
+			// Loop
+			while ($the_query->have_posts()) {
+				$the_query->the_post();
+
+				$post_id = get_the_id();
+				$url = get_post_meta( $post_id, 'image', true );
+				$desc = "";
+				if ( '' != $url ) {
+					// Download the custom field
+					$image = media_sideload_image($url, $post_id, $desc);
+					if ( is_wp_error( $image ) ) {
+						// Failure
+						$processed_posts = 0;
+					} else {
+						// Get existing attachments
+						$attachments = get_posts( array(
+							'post_type' 	=> 'attachment',
+							'number_posts' 	=> 1,
+							'post_status' 	=> null,
+							'post_parent' 	=> $post_id,
+							'orderby' 		=> 'post_date',
+							'order' 		=> 'DESC',
+						) );
+						if ( isset( $attachments[0] ) ) {
+							$thumbnail_id = intval( $attachments[0]->ID );
+							if ( 0 < $thumbnail_id ) {
+								// Set Featured Image attachment ID
+								update_post_meta( $post_id, '_thumbnail_id', $thumbnail_id );
+								// Delete existing older post meta
+								delete_post_meta( $post_id, 'image' );
+								// Process Completed Successfully
+								$processed_posts = $post_id;
+							} // End If Statement
+						} else {
+							// Fail
+							$processed_posts = 0;
+						} // End If Statement
+					} // End If Statement
+				} // End If Statement
+
+				// Output processed post title
+				echo get_the_id() . ' - "<em>' .  get_the_title( $post_id ) . '</em>" .... processed successfully</br>';
+
+			} // End While Loop
+		} // End If Statement
+		wp_reset_postdata();
+
+		// Check if end of query has been reached
+		if ( $found_posts >= ( ( $n * 5 ) + 5 ) ) {
+			return -1;
+		} else {
+			return $processed_posts;
+		} // End If Statement
+
+	} // End woo_process_old_custom_fields()
+} // End If Statement
+
+if ( ! function_exists( 'woo_remove_timthumb_field_keys' ) ) {
+	/**
+	 * woo_remove_timthumb_field_keys removes the timthumb keys from the fields array
+	 * @since  6.1.0
+	 * @return void
+	 */
+	function woo_remove_timthumb_field_keys( $fields ) {
+		if ( isset( $fields['woo_wpthumb_notice'] ) ) {
+			unset( $fields['woo_wpthumb_notice'] );
+		} // End If Statement
+		if ( isset( $fields['woo_resize'] ) ) {
+			unset( $fields['woo_resize'] );
+		} // End If Statement
+		return $fields;
+	} // End woo_remove_timthumb_field_keys()
+	add_filter( 'wf_fields_init_fields', 'woo_remove_timthumb_field_keys', 10 );
+} // End If Statement
 ?>

@@ -1,27 +1,25 @@
 <?php
-/*-----------------------------------------------------------------------------------
+if ( ! defined( 'ABSPATH' ) ) exit;
 
-- Loads all the .php files found in /includes/widgets/ directory
+/*-----------------------------------------------------------------------------------*/
+/* Load the widgets, with support for overriding the widget via a child theme.
+/*-----------------------------------------------------------------------------------*/
 
------------------------------------------------------------------------------------ */
+$widgets = array(
+				'includes/widgets/widget-woo-adspace.php',
+				'includes/widgets/widget-woo-blogauthor.php',
+				'includes/widgets/widget-woo-embed.php',
+				'includes/widgets/widget-woo-flickr.php',
+				'includes/widgets/widget-woo-subscribe.php',
+				'includes/widgets/widget-woo-tabs.php',
+				'includes/widgets/widget-woo-component.php'
+				);
 
-include( TEMPLATEPATH . '/includes/widgets/widget-woo-adspace.php' );
-include( TEMPLATEPATH . '/includes/widgets/widget-woo-blogauthor.php' );
-include( TEMPLATEPATH . '/includes/widgets/widget-woo-embed.php' );
-include( TEMPLATEPATH . '/includes/widgets/widget-woo-flickr.php' );
-include( TEMPLATEPATH . '/includes/widgets/widget-woo-search.php' );
-include( TEMPLATEPATH . '/includes/widgets/widget-woo-tabs.php' );
-include( TEMPLATEPATH . '/includes/widgets/widget-woo-twitter.php' );
-include( TEMPLATEPATH . '/includes/widgets/widget-woo-subscribe.php' );
-include( TEMPLATEPATH . '/includes/widgets/widget-woo-feedback.php' );
-	
-	
-/*---------------------------------------------------------------------------------*/
-/* Deregister Default Widgets */
-/*---------------------------------------------------------------------------------*/
+// Allow child themes/plugins to add widgets to be loaded.
+$widgets = apply_filters( 'woo_widgets', $widgets );
 
-function woo_deregister_widgets(){
-    unregister_widget('WP_Widget_Search');         
+foreach ( $widgets as $w ) {
+	locate_template( $w, true );
 }
-add_action('widgets_init', 'woo_deregister_widgets');
+
 ?>

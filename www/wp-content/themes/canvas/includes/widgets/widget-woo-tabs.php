@@ -26,12 +26,12 @@ class Woo_Widget_WooTabs extends WP_Widget {
 	/*----------------------------------------
 	  Constructor.
 	  ----------------------------------------
-	  
+
 	  * The constructor. Sets up the widget.
 	----------------------------------------*/
-	
-	function Woo_Widget_WooTabs () {
-		
+
+	function __construct() {
+
 		/* Widget settings. */
 		$widget_ops = array( 'classname' => 'widget_woo_tabs', 'description' => __( 'This widget is the Tabs that classically goes into the sidebar. It contains the Popular posts, Latest Posts, Recent comments and a Tag cloud.', 'woothemes' ) );
 
@@ -39,8 +39,8 @@ class Woo_Widget_WooTabs extends WP_Widget {
 		$control_ops = array( 'width' => 250, 'height' => 350, 'id_base' => 'woo_tabs' );
 
 		/* Create the widget. */
-		$this->WP_Widget( 'woo_tabs', __('Woo - Tabs', 'woothemes' ), $widget_ops, $control_ops );
-		
+		parent::__construct( 'woo_tabs', __( 'Woo - Tabs', 'woothemes' ), $widget_ops, $control_ops );
+
 	} // End Constructor
 
 
@@ -121,61 +121,62 @@ class Woo_Widget_WooTabs extends WP_Widget {
    /*----------------------------------------
 	  update()
 	  ----------------------------------------
-	
+
 	* Function to update the settings from
 	* the form() function.
-	
+
 	* Params:
 	* - Array $new_instance
 	* - Array $old_instance
 	----------------------------------------*/
-	
+
 	function update ( $new_instance, $old_instance ) {
-		
-		$instance = $old_instance;
-		
-		$instance['number'] = intval( $new_instance['number'] );
-		$instance['thumb_size'] = intval( $new_instance['thumb_size'] );
-		$instance['days'] = intval( $new_instance['days'] );
-		$instance['order'] = esc_attr( $new_instance['order'] );
-		$instance['pop'] = esc_attr( $new_instance['pop'] );
-		$instance['latest'] = esc_attr( $new_instance['latest'] );
-		$instance['comments'] = esc_attr( $new_instance['comments'] );
-		$instance['tags'] = esc_attr( $new_instance['tags'] );
-		
-		return $instance;
-		
+		$settings = array();
+
+		foreach ( array( 'number', 'thumb_size', 'days' ) as $setting ) {
+			if ( isset( $new_instance[$setting] ) ) {
+				$settings[$setting] = absint( $new_instance[$setting] );
+			}
+		}
+
+		foreach ( array( 'order', 'pop', 'latest', 'comments', 'tags' ) as $setting ) {
+			if ( isset( $new_instance[$setting] ) ) {
+				$settings[$setting] = sanitize_text_field( $new_instance[$setting] );
+			}
+		}
+
+		return $settings;
 	} // End update()
 
    /*----------------------------------------
 	 form()
 	 ----------------------------------------
-	  
+
 	  * The form on the widget control in the
 	  * widget administration area.
-	  
-	  * Make use of the get_field_id() and 
+
+	  * Make use of the get_field_id() and
 	  * get_field_name() function when creating
 	  * your form elements. This handles the confusing stuff.
-	  
+
 	  * Params:
 	  * - Array $instance
 	----------------------------------------*/
 
-   function form( $instance ) { 
-       
+   function form( $instance ) {
+
 		/* Set up some default widget settings. */
 		$defaults = array(
-						'number' => 5, 
-						'thumb_size' => 45, 
-						'order' => 'pop', 
-						'days' => '', 
-						'pop' => '', 
-						'latest' => '', 
-						'comments' => '', 
+						'number' => 5,
+						'thumb_size' => 45,
+						'order' => 'pop',
+						'days' => '',
+						'pop' => '',
+						'latest' => '',
+						'comments' => '',
 						'tags' => ''
 					);
-		
+
 		$instance = wp_parse_args( (array) $instance, $defaults );
 ?>
        <p>
@@ -217,19 +218,18 @@ class Woo_Widget_WooTabs extends WP_Widget {
        </p>
 <?php
 	} // End form()
-	
+
 } // End Class
 
 /*----------------------------------------
   Register the widget on `widgets_init`.
   ----------------------------------------
-  
+
   * Registers this widget.
 ----------------------------------------*/
 
-add_action( 'widgets_init', create_function( '', 'return register_widget("Woo_Widget_WooTabs");' ), 1 ); 
-?>
-<?php
+add_action( 'widgets_init', create_function( '', 'return register_widget("Woo_Widget_WooTabs");' ), 1 );
+
 /*-----------------------------------------------------------------------------------*/
 /* WooTabs - Javascript */
 /*-----------------------------------------------------------------------------------*/
@@ -281,14 +281,14 @@ jQuery(document).ready(function(){
 /*-----------------------------------------------------------------------------------*/
 if ( ! function_exists( 'woo_widget_tabs_popular' ) ) {
 	function woo_widget_tabs_popular( $posts = 5, $size = 45, $days = null ) {
-		global $post; 
+		global $post;
 
 		if ( $days ) {
 			global $popular_days;
 			$popular_days = $days;
 
 			// Register the filtering function
-			add_filter( 'posts_where', 'filter_where' );
+			add_filter( 'posts_where', 'woo_filter_where' );
 		}
 
 		$popular = get_posts( array( 'suppress_filters' => false, 'ignore_sticky_posts' => 1, 'orderby' => 'comment_count', 'numberposts' => $posts ) );
@@ -306,7 +306,7 @@ if ( ! function_exists( 'woo_widget_tabs_popular' ) ) {
 }
 
 //Create a new filtering function that will add our where clause to the query
-function filter_where( $where = '' ) {
+function woo_filter_where( $where = '' ) {
   global $popular_days;
   //posts in the last X days
   $where .= " AND post_date > '" . date('Y-m-d', strtotime('-'.$popular_days.' days')) . "'";
@@ -342,14 +342,14 @@ if ( ! function_exists( 'woo_widget_tabs_comments' ) ) {
 	function woo_widget_tabs_comments( $posts = 5, $size = 35 ) {
 		global $wpdb;
 
-		$comments = get_comments( array( 'number' => $posts, 'status' => 'approve' ) );
+		$comments = get_comments( array( 'number' => $posts, 'status' => 'approve', 'post_status' => 'publish' ) );
 		if ( $comments ) {
 			foreach ( (array) $comments as $comment) {
 			$post = get_post( $comment->comment_post_ID );
 			?>
 				<li class="recentcomments">
 					<?php if ( $size > 0 ) echo get_avatar( $comment, $size ); ?>
-					<a href="<?php echo get_comment_link( $comment->comment_ID ); ?>" title="<?php echo wp_filter_nohtml_kses( $comment->comment_author ); ?> <?php esc_attr_e( 'on', 'woothemes' ); ?> <?php echo esc_attr( $post->post_title ); ?>"><?php echo wp_filter_nohtml_kses($comment->comment_author); ?>: <?php echo stripslashes( substr( wp_filter_nohtml_kses( $comment->comment_content ), 0, 50 ) ); ?>...</a>
+					<a href="<?php echo get_comment_link( $comment->comment_ID ); ?>" title="<?php echo wp_filter_nohtml_kses( $comment->comment_author ); ?> <?php echo esc_attr_x( 'on', 'comment topic', 'woothemes' ); ?> <?php echo esc_attr( $post->post_title ); ?>"><?php echo wp_filter_nohtml_kses($comment->comment_author); ?>: <?php echo stripslashes( substr( wp_filter_nohtml_kses( $comment->comment_content ), 0, 50 ) ); ?>...</a>
 					<div class="fix"></div>
 				</li>
 			<?php

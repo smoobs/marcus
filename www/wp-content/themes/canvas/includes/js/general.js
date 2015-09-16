@@ -1,49 +1,125 @@
 /*-----------------------------------------------------------------------------------*/
-/* Function - Superfish navigation dropdown */
-/*-----------------------------------------------------------------------------------*/
-
-;(function($){$.fn.superfish=function(op){var sf=$.fn.superfish,c=sf.c,$arrow=$(['<span class="',c.arrowClass,'"> &#187;</span>'].join( '')),over=function(){var $$=$(this),menu=getMenu($$);clearTimeout(menu.sfTimer);$$.showSuperfishUl().siblings().hideSuperfishUl()},out=function(){var $$=$(this),menu=getMenu($$),o=sf.op;clearTimeout(menu.sfTimer);menu.sfTimer=setTimeout(function(){o.retainPath=($.inArray($$[0],o.$path)>-1);$$.hideSuperfishUl();if(o.$path.length&&$$.parents(['li.',o.hoverClass].join( '')).length<1){over.call(o.$path)}},o.delay)},getMenu=function($menu){var menu=$menu.parents(['ul.',c.menuClass,':first'].join( ''))[0];sf.op=sf.o[menu.serial];return menu},addArrow=function($a){$a.addClass(c.anchorClass).append($arrow.clone())};return this.each(function(){var s=this.serial=sf.o.length;var o=$.extend({},sf.defaults,op);o.$path=$( 'li.'+o.pathClass,this).slice(0,o.pathLevels).each(function(){$(this).addClass([o.hoverClass,c.bcClass].join( ' ')).filter( 'li:has(ul)').removeClass(o.pathClass)});sf.o[s]=sf.op=o;$( 'li:has(ul)',this)[($.fn.hoverIntent&&!o.disableHI)?'hoverIntent':'hover'](over,out).each(function(){if(o.autoArrows)addArrow($( '>a:first-child',this))}).not( '.'+c.bcClass).hideSuperfishUl();var $a=$( 'a',this);$a.each(function(i){var $li=$a.eq(i).parents( 'li' );$a.eq(i).focus(function(){over.call($li)}).blur(function(){out.call($li)})});o.onInit.call(this)}).each(function(){var menuClasses=[c.menuClass];if(sf.op.dropShadows&&!($.browser.msie&&$.browser.version<7))menuClasses.push(c.shadowClass);$(this).addClass(menuClasses.join( ' '))})};var sf=$.fn.superfish;sf.o=[];sf.op={};sf.IE7fix=function(){var o=sf.op;if($.browser.msie&&$.browser.version>6&&o.dropShadows&&o.animation.opacity!=undefined)this.toggleClass(sf.c.shadowClass+'-off')};sf.c={bcClass:'sf-breadcrumb',menuClass:'sf-js-enabled',anchorClass:'sf-with-ul',arrowClass:'sf-sub-indicator',shadowClass:'sf-shadow'};sf.defaults={hoverClass:'sfHover',pathClass:'overideThisToUse',pathLevels:1,delay:800,animation:{opacity:'show'},speed:'normal',autoArrows:true,dropShadows:true,disableHI:false,onInit:function(){},onBeforeShow:function(){},onShow:function(){},onHide:function(){}};$.fn.extend({hideSuperfishUl:function(){var o=sf.op,not=(o.retainPath===true)?o.$path:'';o.retainPath=false;var $ul=$(['li.',o.hoverClass].join( ''),this).add(this).not(not).removeClass(o.hoverClass).find( '>ul').hide().css( 'visibility','hidden' );o.onHide.call($ul);return this},showSuperfishUl:function(){var o=sf.op,sh=sf.c.shadowClass+'-off',$ul=this.addClass(o.hoverClass).find( '>ul:hidden').css( 'visibility','visible' );sf.IE7fix.call($ul);o.onBeforeShow.call($ul);$ul.animate(o.animation,o.speed,function(){sf.IE7fix.call($ul);o.onShow.call($ul)});return this}})})(jQuery);
-
-/*-----------------------------------------------------------------------------------*/
 /* Run scripts on jQuery(document).ready() */
 /*-----------------------------------------------------------------------------------*/
-
 jQuery(document).ready(function(){
+
+	// FitVids - Responsive Videos
+	jQuery( '.widget_video, .panel, .video' ).fitVids();
+	if ( window.innerWidth < 768 ) {
+		jQuery( '.entry' ).fitVids();
+	}
+
+	// Add class to parent menu items with JS until WP does this natively
+	jQuery( 'ul.sub-menu, ul.children' ).parent( 'li' ).addClass( 'parent' );
+
+/*-----------------------------------------------------------------------------------*/
+/* Navigation */
+/*-----------------------------------------------------------------------------------*/
+
+	// Fix dropdowns in Android
+	if ( navigator.userAgent.match(/Android/i) && window.innerWidth >= 768 ) {
+		jQuery( '.nav li:has(ul)' ).doubleTapToGo();
+	}
+
+	// Add the 'show-nav' class to the body when the nav toggle is clicked
+	jQuery( '.nav-toggle' ).click(function(e) {
+
+		// Prevent default behaviour
+		e.preventDefault();
+
+		// Add the 'show-nav' class
+		jQuery( 'body' ).toggleClass( 'show-nav' );
+
+		// Check if .top-navigation already exists
+		if ( jQuery( '#navigation' ).find( '.top-navigation' ).size() ) {
+			return;
+		}
+
+		if ( jQuery( '#navigation' ).find( '.top-menu' ).size() ) {
+			return;
+		}
+
+		// If it doesn't, clone it (so it will still appear when resizing the browser window in desktop orientation) and add it.
+		jQuery( '#top .top-menu' ).clone().appendTo( '#navigation .menus' );
+		jQuery( '#top .top-navigation' ).clone().appendTo( '#navigation .menus' );
+	});
+
+	// Remove the 'show-nav' class from the body when the nav-close anchor is clicked
+	jQuery('.nav-close').click(function(e) {
+
+		// Prevent default behaviour
+		e.preventDefault();
+
+		// Remove the 'show-nav' class
+		jQuery( 'body' ).removeClass( 'show-nav' );
+	});
+
+	// Remove 'show-nav' class from the body when user tabs outside of #navigation on handheld devices
+	var hasParent = function(el, id) {
+        if (el) {
+            do {
+                if (el.id === id) {
+                    return true;
+                }
+                if (el.nodeType === 9) {
+                    break;
+                }
+            }
+            while((el = el.parentNode));
+        }
+        return false;
+    };
+
+	if (jQuery(window).width() < 767) {
+		if (jQuery('body')[0].addEventListener){
+			document.addEventListener('touchstart', function(e) {
+	        if ( jQuery( 'body' ).hasClass( 'show-nav' ) && !hasParent( e.target, 'navigation' ) ) {
+		        // Prevent default behaviour
+		        e.preventDefault();
+
+		        // Remove the 'show-nav' class
+		        jQuery( 'body' ).removeClass( 'show-nav' );
+	        }
+	    }, false);
+		} else if (jQuery('body')[0].attachEvent){
+			document.attachEvent('ontouchstart', function(e) {
+	        if ( jQuery( 'body' ).hasClass( 'show-nav' ) && !hasParent( e.target, 'navigation' ) ) {
+		        // Prevent default behaviour
+		        e.preventDefault();
+
+		        // Remove the 'show-nav' class
+		        jQuery( 'body' ).removeClass( 'show-nav' );
+	        }
+	    });
+		}
+	}
 
 /*-----------------------------------------------------------------------------------*/
 /* Add rel="lightbox" to image links if the lightbox is enabled */
 /*-----------------------------------------------------------------------------------*/
 
-if ( jQuery( 'body' ).hasClass( 'has-lightbox' ) && ! jQuery( 'body' ).hasClass( 'portfolio-component' ) ) {
+if ( jQuery( 'body' ).hasClass( 'has-lightbox' ) && ! jQuery( 'body' ).hasClass( 'portfolio-component' ) /* && ! jQuery( 'body' ).hasClass( 'woocommerce' ) */ ) {
 	jQuery( 'a[href$=".jpg"], a[href$=".jpeg"], a[href$=".gif"], a[href$=".png"]' ).each( function () {
 		var imageTitle = '';
 		if ( jQuery( this ).next().hasClass( 'wp-caption-text' ) ) {
 			imageTitle = jQuery( this ).next().text();
 		}
-		
-		jQuery( this ).attr( 'rel', 'lightbox' ).attr( 'title', imageTitle );
+
+		if ( '' !== imageTitle ) {
+			jQuery( this ).attr( 'title', imageTitle );
+		}
+
+		if ( jQuery( this ).parents( '.gallery' ).length ) {
+			var galleryID = jQuery( this ).parents( '.gallery' ).attr( 'id' );
+			jQuery( this ).attr( 'rel', 'lightbox[' + galleryID + ']' );
+		} else {
+			jQuery( this ).attr( 'rel', 'lightbox' );
+		}
 	});
-	
-	jQuery( 'a[rel^="lightbox"]' ).prettyPhoto();
+
+	jQuery( 'a[rel^="lightbox"]' ).prettyPhoto({social_tools: false});
 }
 
-/*-----------------------------------------------------------------------------------*/
-/* Add alt-row styling to tables */
-/*-----------------------------------------------------------------------------------*/
-
-	jQuery( '.entry table tr:odd' ).addClass( 'alt-table-row' );
-
-/*-----------------------------------------------------------------------------------*/
-/* Integrate jQuery.superfish */
-/*-----------------------------------------------------------------------------------*/
-	
-	if( jQuery().superfish ) {
-		jQuery( 'ul.nav' ).superfish({
-			delay: 200,
-			animation: {opacity:'show', height:'show'},
-			speed: 'fast',
-			dropShadows: false
-		});
-	}
-
 }); // End jQuery()
+
+

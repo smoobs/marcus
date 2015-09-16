@@ -17,29 +17,33 @@
  *
  * @link http://codex.wordpress.org/Plugin_API#Filters
  */
- 
- $title_before = '<h1 class="title">';
+
+ global $woo_options;
+
+ $title_before = '<h1 class="title entry-title">';
  $title_after = '</h1>';
- 
+
  $page_link_args = apply_filters( 'woothemes_pagelinks_args', array( 'before' => '<div class="page-link">' . __( 'Pages:', 'woothemes' ), 'after' => '</div>' ) );
- 
+
  woo_post_before();
 ?>
-<div <?php post_class(); ?>>
-<?php
-	woo_post_inside_before();	
-	echo $title_before . apply_filters( 'woo_404_title', __( 'Error 404 - Page not found!', 'woothemes' ) ) . $title_after;
-?>
-	<div class="entry">
+<article <?php post_class(); ?>>
+<?php woo_post_inside_before();	?>
+
+	<header>
+		<?php echo $title_before . apply_filters( 'woo_404_title', __( 'Error 404 - Page not found!', 'woothemes' ) ) . $title_after; ?>
+	</header>
+
+	<section class="entry">
 	    <?php
 	    	echo apply_filters( 'woo_404_content', __( 'The page you are trying to reach does not exist, or has been moved. Please use the menus or the search box to find what you are looking for.', 'woothemes' ) );
-	    	if ( $woo_options['woo_post_content'] == 'content' || is_singular() ) wp_link_pages( $page_link_args );
+	    	if (  ( isset( $woo_options['woo_post_content'] ) && $woo_options['woo_post_content'] == 'content' ) || is_singular() ) wp_link_pages( $page_link_args );
 	    ?>
-	</div><!-- /.entry -->
+	</section><!-- /.entry -->
 <?php
 	woo_post_inside_after();
 ?>
-</div><!-- /.post -->
+</article><!-- /.post -->
 <?php
 	woo_post_after();
 ?>

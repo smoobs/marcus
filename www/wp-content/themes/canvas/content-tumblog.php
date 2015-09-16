@@ -18,33 +18,33 @@
  */
 
  global $woo_options;
- 
- $title_before = '<h2 class="title"><a href="' . get_permalink( get_the_ID() ) . '" rel="bookmark" title="' . the_title_attribute( array( 'echo' => 0 ) ) . '">';
+
+ $title_before = '<h2 class="title entry-title"><a href="' . get_permalink( get_the_ID() ) . '" rel="bookmark" title="' . the_title_attribute( array( 'echo' => 0 ) ) . '">';
  $title_after = '</a></h2>';
- 
+
  $page_link_args = apply_filters( 'woothemes_pagelinks_args', array( 'before' => '<div class="page-link">' . __( 'Pages:', 'woothemes' ), 'after' => '</div>' ) );
- 
+
  woo_post_before();
 ?>
-<div <?php post_class(); ?>>
+<article <?php post_class(); ?>>
 <?php
-	woo_post_inside_before();	
-    woo_tumblog_the_title( 'h2','title' );
+	woo_post_inside_before();
+    woo_tumblog_the_title( 'h2','title entry-title' );
     woo_post_meta();
 ?>
-	<div class="entry">
+	<section class="entry">
 	    <?php
 	    	woo_tumblog_content_before();
 	    		if ( ( $woo_options['woo_post_content'] == 'content' ) || is_singular() ) { the_content(__('Continue Reading &rarr;', 'woothemes')); } else { the_excerpt(); }
 		    	if ( $woo_options['woo_post_content'] == 'content' || is_singular() ) { wp_link_pages( $page_link_args ); }
 	    	woo_tumblog_content_after();
 	    ?>
-	</div><!-- /.entry -->
+	</section><!-- /.entry -->
 	<div class="fix"></div>
 <?php
 	woo_post_inside_after();
 ?>
-</div><!-- /.post -->
+</article><!-- /.post -->
 <?php
 	woo_post_after();
 	comments_template();

@@ -9,7 +9,7 @@
  * @package WooFramework
  * @subpackage Template
  */
- 
+
  // Do not delete these lines
 if ( ! empty( $_SERVER['SCRIPT_FILENAME'] ) && 'comments.php' == basename( $_SERVER['SCRIPT_FILENAME'] ) ) { die ( __( 'Please do not load this page directly. Thanks!', 'woothemes' ) ); }
 
@@ -21,15 +21,15 @@ if ( post_password_required() ) { ?><p class="nocomments"><?php _e( 'This post i
  *
  * This is where our comments display is generated.
  */
- 
- $comments_by_type = &separate_comments( $comments );
- 
+
+ $comments_by_type = separate_comments( $comments );
+
  // You can start editing here -- including this comment!
-  
+
 	if ( have_comments() ) {
 
 		echo '<div id="comments">';
- 
+
 	 	if ( ! empty( $comments_by_type['comment'] ) ) { ?>
 		 	<h3 id="comments-title"><?php printf( _n( 'One Response to %2$s', '%1$s Responses to %2$s', get_comments_number(), 'woothemes' ), number_format_i18n( get_comments_number() ), '<em>' . get_the_title() . '</em>' ); ?></h3>
 		 	<ol class="commentlist">
@@ -52,11 +52,11 @@ if ( post_password_required() ) { ?><p class="nocomments"><?php _e( 'This post i
 				<div class="fix"></div><!--/.fix-->
 			</div><!-- .navigation -->
 			<?php } // End IF Statement
-	
+
 		} // End empty($comments_by_type['comment'] IF Statement
-	
+
 			if ( ! empty( $comments_by_type['pings'] ) ) { ?>
-			 	<h3 id="comments-title"><?php  _e( 'Trackbacks/Pingbacks', 'woothemes' ); ?></h3>
+			 	<h3 id="pings-title"><?php  _e( 'Trackbacks/Pingbacks', 'woothemes' ); ?></h3>
 			 	<ol class="commentlist">
 					<?php
 						/* Loop through and list the pings. Tell wp_list_comments()
@@ -69,13 +69,13 @@ if ( post_password_required() ) { ?><p class="nocomments"><?php _e( 'This post i
 					?>
 				</ol>
 			<?php }
- 
+
 		echo '</div>';
 
 	} else {
- 
+
 		echo '<div id="comments">';
-		
+
 		// If there are no comments and comments are closed, let's leave a little note, shall we?
 		if ( ! comments_open() && is_singular() ) { ?><h5 class="nocomments"><?php _e( 'Comments are closed.', 'woothemes' ); ?></h5><?php }
 		else { ?><h5 class="nocomments"><?php _e( 'No comments yet.', 'woothemes' ); ?></h5><?php }
@@ -83,12 +83,12 @@ if ( post_password_required() ) { ?><p class="nocomments"><?php _e( 'This post i
 		echo '</div>';
 
 	} // End IF Statement
-  
+
 /**
  * Respond Form.
  *
  * This is where the comment form is generated.
  */
- 
+
  comment_form();
 ?>

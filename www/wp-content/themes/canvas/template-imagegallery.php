@@ -8,9 +8,9 @@
  * @package WooFramework
  * @subpackage Template
  */
- 
+
  get_header();
-?> 
+?>
     <!-- #content Starts -->
 	<?php woo_content_before(); ?>
     <div id="content" class="col-full">
@@ -19,45 +19,43 @@
 
             <!-- #main Starts -->
             <?php woo_main_before(); ?>
-            <div id="main">      
-                                                                                
+            <section id="main">
+
 				<?php woo_loop_before(); ?>
-				
+
                 <!-- Post Starts -->
                 <?php woo_post_before(); ?>
-                <div class="post">
-    
+                <article class="post">
+
                     <?php woo_post_inside_before(); ?>
-    
+
                     <h1 class="title"><?php the_title(); ?></h1>
-                    
-                    <div class="entry">
-                    <?php $saved = $wp_query; query_posts( 'showposts=60' ); ?>
-                    <?php if ( have_posts() ) { while ( have_posts() ) { the_post(); ?>				
-                        <?php $wp_query->is_home = false; ?>
-    
-                        <?php woo_get_image( 'image', 100, 100, 'thumbnail alignleft' ); ?>
-                    
-                    <?php } } $wp_query = $saved; ?>	
-                    <div class="fix"></div>
-                    </div>
-    
+
+                    <section class="entry">
+                    <?php $loop = new WP_Query( array( 'posts_per_page' => 60 ) ); ?>
+                    <?php if ( $loop->have_posts() ) { while ( $loop->have_posts() ) { $loop->the_post(); ?>
+                        <?php $loop->is_home = false; ?>
+                        <?php woo_image( 'width=100&height=100&class=thumbnail alignleft&single=true' ); ?>
+                    <?php } } wp_reset_postdata(); ?>
+                    	<div class="fix"></div>
+                    </section>
+
                     <?php woo_post_inside_after(); ?>
-    
-                </div><!-- /.post -->
+
+                </article><!-- /.post -->
                 <?php woo_post_after(); ?>
-                <div class="fix"></div>                
-                                                                
-            </div><!-- /#main -->
+                <div class="fix"></div>
+
+            </section><!-- /#main -->
             <?php woo_main_after(); ?>
-    
+
             <?php get_sidebar(); ?>
-    
-		</div><!-- /#main-sidebar-container -->         
+
+		</div><!-- /#main-sidebar-container -->
 
 		<?php get_sidebar( 'alt' ); ?>
 
     </div><!-- /#content -->
 	<?php woo_content_after(); ?>
-		
+
 <?php get_footer(); ?>

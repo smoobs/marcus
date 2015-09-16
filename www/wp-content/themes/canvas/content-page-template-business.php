@@ -18,33 +18,31 @@
  * @link http://codex.wordpress.org/Plugin_API#Filters
  */
  global $woo_options;
- $title_before = '<h1 class="title">';
+ $title_before = '<h1 class="title entry-title">';
  $title_after = '</h1>';
- 
+
  $page_link_args = apply_filters( 'woothemes_pagelinks_args', array( 'before' => '<div class="page-link">' . __( 'Pages:', 'woothemes' ), 'after' => '</div>' ) );
- 
+
  woo_post_before();
 ?>
-<div <?php post_class(); ?>>
+<article <?php post_class(); ?>>
 <?php
-	woo_post_inside_before();	
-	// the_title( $title_before, $title_after );
+	woo_post_inside_before();
 ?>
-	<div class="entry">
+	<section class="entry">
 	    <?php
 	    	the_content();
-	    	if ( $woo_options['woo_post_content'] == 'content' || is_singular() ) wp_link_pages( $page_link_args );
+	    	if ( isset( $woo_options['woo_post_content'] ) && 'content' == $woo_options['woo_post_content'] || is_singular() ) wp_link_pages( $page_link_args );
 	    ?>
-	</div><!-- /.entry -->
+	</section><!-- /.entry -->
 	<div class="fix"></div>
 <?php
 	woo_post_inside_after();
 ?>
-</div><!-- /.post -->
+</article><!-- /.post -->
 <?php
 	woo_post_after();
-
-/* 
+/*
 	$comm = $woo_options[ 'woo_comments' ];
 	if ( ( $comm == 'page' || $comm == 'both' ) && is_page() ) { comments_template(); }
 */

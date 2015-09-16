@@ -1,364 +1,398 @@
 <?php
 /**
- * Meta Manager
+ * Filters
  *
- * This is the meta manager class, containing all processing and setup functionality
+ * This is the filters class, containing all processing and setup functionality
  * for managing the metadata above and below blog post content.
  *
  * @package WooFramework
  * @subpackage Module
- * 
- *-----------------------------------------------------------------------------------
-
- CLASS INFORMATION
-
- Date Created: 2011-03-21.
- Author: Matty.
- Since: 4.0.0
-
-
- TABLE OF CONTENTS
-
- - var $plugin_prefix
- - var $plugin_path
- - var $plugin_url
- - var $version
- 
- - var $admin_page
- - var $meta_areas
- 
- - var $shortcodes
- 
- - function Woo_Meta () (Constructor)
- - function init ()
- - function register_admin_screen ()
- - function admin_screen ()
- - function admin_screen_help ()
- - function enqueue_scripts ()
- - function enqueue_styles ()
- - function create_filters ()
- - function setup_shortcodes ()
- - function add_exporter_data ()
-
------------------------------------------------------------------------------------*/
-
+ *
+ * CLASS INFORMATION
+ *
+ * Date Created: 2011-03-21.
+ * Last Modified: 2013-06-26.
+ * Author: Matty.
+ * Since: 4.0.0
+ *
+ *
+ * TABLE OF CONTENTS
+ *
+ * - public $plugin_prefix
+ * - public $plugin_path
+ * - public $plugin_url
+ * - public $version
+ *
+ * - public $admin_page
+ * - public $meta_areas
+ *
+ * - public $shortcodes
+ *
+ * - function __construct()
+ * - function init()
+ * - function _generate_sections_menu()
+ * - function _generate_sections_html()
+ * - function register_admin_screen()
+ * - function admin_screen()
+ * - function admin_screen_help()
+ * - function _get_shortcode_reference()
+ * - function admin_screen_logic()
+ * - function enqueue_scripts()
+ * - function create_filters()
+ * - function setup_shortcodes()
+ * - function add_exporter_data()
+ */
 class Woo_Meta {
+	public $plugin_prefix;
+	public $plugin_path;
+	public $plugin_url;
+	public $version;
 
-	/*----------------------------------------
-	  Class Variables
-	  ----------------------------------------
-	  
-	  * Setup of variable placeholders, to be
-	  * populated when the constructor runs.
-	----------------------------------------*/
+	public $admin_page;
+	public $meta_areas;
 
-	var $plugin_prefix;
-	var $plugin_path;
-	var $plugin_url;
-	var $version;
+	public $shortcodes;
 
-	var $admin_page;
-	var $meta_areas;
-	
-	var $shortcodes;
-
-	/*----------------------------------------
- 	  Constructor Function
- 	  ----------------------------------------
- 	  
- 	  * Constructor function.
- 	  * Sets up the class and registers
- 	  * variable action hooks.
- 	  
- 	  * Params:
- 	  * - String $plugin_prefix
- 	  * - String $plugin_path
- 	  * - String $plugin_url
- 	----------------------------------------*/
-
-	function Woo_Meta ( $plugin_prefix, $plugin_path, $plugin_url, $version ) {
-	
+	/**
+	 * Class Constructor.
+	 * @access  public
+	 * @since   1.0.0
+	 * @param   string $plugin_prefix Prefix to use in this class.
+	 * @param   string $plugin_path   The path to this plugin.
+	 * @param   string $plugin_url    The URL to this plugin.
+	 * @param   string $version       Version number.
+	 */
+	public function __construct ( $plugin_prefix, $plugin_path, $plugin_url, $version ) {
 		$this->plugin_prefix = $plugin_prefix;
 		$this->plugin_path = $plugin_path;
 		$this->plugin_url = $plugin_url;
 		$this->version = $version;
-	
+
 		$this->init();
-	
-	} // End Constructor
-	
-	/*----------------------------------------
- 	  init()
- 	  ----------------------------------------
- 	  
- 	  * This guy runs the show.
- 	  * Rocket boosters... engage!
- 	----------------------------------------*/
-	
-	function init () {
-		
-		// Create the necessary filters.
-		add_action( 'after_setup_theme', array( &$this, 'create_filters' ), 10 );
-		
+	} // End __construct()
+
+	/**
+	 * Initialise the plugin.
+	 * @access  public
+	 * @since   1.0.0
+	 * @return  void
+	 */
+	public function init () {
 		if ( is_admin() ) {
-	
 			// Register the admin screen.
-			add_action( 'admin_menu', array( &$this, 'register_admin_screen' ), 20 );
-			
+			add_action( 'admin_menu', array( $this, 'register_admin_screen' ), 20 );
+
 			// Execute certain code only on the specific admin screen.
 			if ( is_admin( $this->admin_page ) ) {
-			
-				// Add contextual help.
-				add_action( 'contextual_help', array( &$this, 'admin_screen_help' ), 10, 3 );
-				
 				// Setup default shortcodes for reference.
 				$this->setup_shortcodes();
-				
-				// Stored data.
-				$stored_values = get_option( $this->plugin_prefix . 'stored_meta' );
-				
-				// Setup meta areas.
-				$this->meta_areas = array();
-				
-				$this->meta_areas['post_meta'] = array(
-										'woo_filter_post_meta' => array(
-												'title' => __( 'Above post content', 'woothemes' ), 
-												'default' => '<span class="small">' . __( 'By', 'woothemes' ) . '</span> [post_author_posts_link] <span class="small">' . __( 'on', 'woothemes' ) . '</span> [post_date] <span class="small">' . __( 'in', 'woothemes' ) . '</span> [post_categories before=""] ' . ' [post_edit]', 
-												'stored_value' => '', 
-												'description' => __( 'Data above the content of your blog posts.', 'woothemes' )
-											),
-										'woo_post_more' => array(
-												'title' => __( '"Read more" area below posts', 'woothemes' ), 
-												'default' => '[view_full_article] &middot; [post_comments]', 
-												'stored_value' => '', 
-												'description' => __( 'Data below each blog post.', 'woothemes' )
-											)
-									);
-									
-				// Assigned stored data to the appropriate meta_area.
-				foreach ( $this->meta_areas as $id => $arr ) {
-					foreach ( $this->meta_areas[$id] as $k => $v ) {
-						if ( is_array( $stored_values ) && array_key_exists( $k, $stored_values ) ) {
-							$this->meta_areas[$id][$k]['stored_value'] = $stored_values[$k];
-						} else {
-							$this->meta_areas[$id][$k]['stored_value'] = $this->meta_areas[$id][$k]['default'];
-						}
-					}
-				}
-			
+
 				// Make sure our data is added to the WooFramework settings exporter.
-				add_filter( 'wooframework_export_query_inner', array( &$this, 'add_exporter_data' ) );
-			
+				add_filter( 'wooframework_export_query_inner', array( $this, 'add_exporter_data' ) );
 			}
-		
+
+			// Register the admin screen to be able to load the WooFramework's CSS and other assets.
+			add_filter( 'wf_load_admin_css', array( $this, 'register_screen_id' ) );
 		} // End IF Statement
-	
+
+		// Setup meta areas.
+		$this->meta_areas = array();
+
+		$this->meta_areas['post_meta'] = array(
+								'woo_filter_post_meta' => array(
+										'title' => __( 'Above post content', 'woothemes' ),
+										'default' => '<span class="small">' . __( 'By', 'woothemes' ) . '</span> [post_author_posts_link] <span class="small">' . __( 'on', 'woothemes' ) . '</span> [post_date] <span class="small">' . __( 'in', 'woothemes' ) . '</span> [post_categories before=""] ' . '[post_comments]',
+										'stored_value' => '',
+										'description' => __( 'Data above the content of your blog posts.', 'woothemes' )
+									),
+								'woo_post_more' => array(
+										'title' => __( '"Read more" area below posts', 'woothemes' ),
+										'default' => '[view_full_article] [post_edit]',
+										'stored_value' => '',
+										'description' => __( 'Data below each blog post.', 'woothemes' )
+									)
+							);
+
+		// Allow child themes/plugins to filter here.
+		$this->meta_areas = (array)apply_filters( 'woo_meta_manager_meta_areas', $this->meta_areas );
+
+		// Stored data.
+		$stored_values = get_option( $this->plugin_prefix . 'stored_meta' );
+
+		// Assigned stored data to the appropriate meta_area.
+		foreach ( $this->meta_areas as $id => $arr ) {
+			foreach ( $this->meta_areas[$id] as $k => $v ) {
+				if ( is_array( $stored_values ) && array_key_exists( $k, $stored_values ) ) {
+					$this->meta_areas[$id][$k]['stored_value'] = $stored_values[$k];
+				} else {
+					$this->meta_areas[$id][$k]['stored_value'] = $this->meta_areas[$id][$k]['default'];
+				}
+			}
+		}
+
+
+		// Create the necessary filters.
+		add_action( 'after_setup_theme', array( $this, 'create_filters' ), 10 );
 	} // End init()
 
-	function register_admin_screen () {
-		
-		if ( function_exists( 'add_submenu_page' ) ) {	
-			
-			$this->admin_page = add_submenu_page('woothemes', __( 'Meta Manager', 'woothemes' ), __( 'Meta Manager', 'woothemes' ), 'manage_options', 'woo-meta-manager', array( &$this, 'admin_screen' ) );
-			
-			// Admin screen logic.
-			add_action( 'load-' . $this->admin_page, array( &$this, 'admin_screen_logic' ) );
-			
-			// Admin screen JavaScript.
-			add_action( 'admin_print_scripts-' . $this->admin_page, array( &$this, 'enqueue_scripts' ) );
-			
-			// Admin screen CSS.
-			add_action( 'admin_print_styles-' . $this->admin_page, array( &$this, 'enqueue_styles' ) );
-			
-			// TinyMCE JavaScript and init.
-			add_action( 'admin_head-' . $this->admin_page, array( &$this, 'tinymce_headers' ) );
-			
+	/**
+	 * Register the screen ID with the WooFramework's asset loader.
+	 * @access  public
+	 * @since   5.7.1
+	 * @return  void
+	 */
+	public function register_screen_id ( $screens ) {
+		if ( ! in_array( 'woo-meta-manager', $screens ) ) {
+			$screens[] = 'woo-meta-manager';
 		}
-	
+		return $screens;
+	} // End register_screen_id()
+
+	/**
+	 * Generate an unordered list of links to each section.
+	 * @access  private
+	 * @since   5.3.0
+	 * @return  string Rendered menu HTML.
+	 */
+	private function _generate_sections_menu () {
+		$html = '';
+		$count = 0;
+
+		if ( 1 < count( array_keys( $this->meta_areas ) ) ) {
+			$html .= '<ul id="settings-sections" class="subsubsub hide-if-no-js">' . "\n";
+			foreach ( array_keys( $this->meta_areas ) as $k ) {
+				$count++;
+				$title = str_replace( '_', ' ', $k );
+
+				$css_class = $k . ' general';
+
+				if ( $count == 1 ) { $css_class .= ' current'; }
+
+				$html .= '<li><a href="#' . esc_attr( $k ) . '" class="tab ' . esc_attr( $css_class ) . '">' . ucwords( $title ) . '</a>';
+				if ( 1 < count( array_keys( $this->meta_areas ) ) && $count < count( array_keys( $this->meta_areas ) ) ) { $html .= ' | '; }
+				$html .= '</li>' . "\n";
+			}
+			$html .= '</ul><div class="clear"></div>' . "\n";
+		}
+
+		echo $html;
+	} // End _generate_sections_menu()
+
+	/**
+	 * Generate the HTML for the various sections.
+	 * @access  private
+	 * @since   5.3.0
+	 * @return  string Rendered HTML.
+	 */
+	private function _generate_sections_html () {
+		$html = '';
+
+		if ( 0 < count( $this->meta_areas ) ) {
+			foreach ( $this->meta_areas as $k => $v ) {
+
+				$title = str_replace( '_', ' ', $k );
+
+				$html .= '<div id="' . $k . '" class="content-section">' . "\n";
+					$html .= '<h3 class="title">' . ucwords( $title ) . '</h3>' . "\n";
+					if ( 0 < count( $v ) ) {
+						$html .= '<table class="form-table">' . "\n";
+						foreach ( $v as $i => $j ) {
+							$html .= '<tr>' . "\n";
+								$html .= '<th scope="row">' . $j['title'] . '</th>' . "\n";
+								$html .= '<td>' . "\n";
+									$html .= '<fieldset><legend class="screen-reader-text"><span>' . $j['title'] . '</span></legend>' . "\n";
+									$html .= '<textarea id="' . esc_attr( $i ) . '" name="' . esc_attr( $i ) . '" rows="10" cols="50" class="large-text code">' . stripslashes( $j['stored_value'] ) . '</textarea>' . "\n";
+									$html .= '</fieldset>' . "\n";
+									if ( isset( $j['description'] ) ) {
+										$html .= '<p class="description">' . "\n";
+											$html .= $j['description'] . "\n";
+										$html .= '</p><!--/.description-->' . "\n";
+									}
+								$html .= '</td>' . "\n";
+							$html .= '</tr>' . "\n";
+						}
+						$html .= '</table>' . "\n";
+					}
+				$html .= '</div>' . "\n";
+			}
+		}
+
+		echo $html;
+	} // End _generate_sections_html()
+
+	/**
+	 * Register the admin screen within WordPress.
+	 * @access  public
+	 * @since   1.0.0
+	 * @return  void
+	 */
+	public function register_admin_screen () {
+		if ( function_exists( 'add_submenu_page' ) ) {
+			$this->admin_page = add_submenu_page( 'woothemes', __( 'Filters', 'woothemes' ), __( 'Filters', 'woothemes' ), 'manage_options', 'woo-meta-manager', array( $this, 'admin_screen' ) );
+
+			// Admin screen logic.
+			add_action( 'load-' . $this->admin_page, array( $this, 'admin_screen_logic' ) );
+
+			// Add contextual help tabs.
+			add_action( 'load-' . $this->admin_page, array( $this, 'admin_screen_help' ) );
+
+			// Add JavaScripts.
+			add_action( 'load-' . $this->admin_page, array( $this, 'enqueue_scripts' ) );
+		}
 	} // End register_admin_screen()
-	
-	/*----------------------------------------
- 	  admin_screen()
- 	  ----------------------------------------
- 	  
- 	  * Load the admin screen.
- 	----------------------------------------*/
-	
-	function admin_screen () {
-	
+
+	/**
+	 * Load the admin screen markup.
+	 * @access  public
+	 * @since   1.0.0
+	 * @return  void
+	 */
+	public function admin_screen () {
+		do_action( 'wf_screen_get_header', 'woo-meta-manager', 'themes' );
+
 		// Keep the screen XHTML separate and load it from that file.
 		include_once( $this->plugin_path . '/screens/admin.php' );
-	
+
+		do_action( 'wf_screen_get_footer', 'woo-meta-manager', 'themes' );
 	} // End admin_screen()
-	
-	/*----------------------------------------
- 	  admin_screen_help()
- 	  ----------------------------------------
- 	  
- 	  * Contextual help on the admin screen.
- 	----------------------------------------*/
-	
-	function admin_screen_help ( $contextual_help, $screen_id, $screen ) {
-	
-		// $contextual_help .= var_dump($screen); // use this to help determine $screen->id
-		
-		if ( $this->admin_page == $screen->id ) {
-		
-		$contextual_help =
-		  '<p>' . __('Welcome to the Woo Meta Manager!', 'woothemes') . '</p>' .
-		  '<p>' . __('Here are a few notes on using this screen.', 'woothemes') . '</p>' .
-		  '<p>' . __('Fill in the area you\'d like to customise and hit the "Save All Changes" button. It\'s as easy as that!', 'woothemes') . '</p>' .
-		  '<p><strong>' . __('For more information:', 'woothemes') . '</strong></p>' .
-		  '<p>' . sprintf( __('<a href="%s" target="_blank">WooThemes Support Forums</a>', 'woothemes'), 'http://forum.woothemes.com/' ) . '</p>';
-		
-		} // End IF Statement
-		
-		return $contextual_help;
-	
+
+	/**
+	 * Enqueue scripts for the admin screen.
+	 * @access  public
+	 * @since   5.3.0
+	 * @return  void
+	 */
+	public function enqueue_scripts () {
+		wp_register_script( 'woothemes-filters-tabs-navigation', $this->plugin_url . 'assets/js/tabs-navigation.js', array( 'jquery' ), '1.0.0', true );
+		wp_enqueue_script( 'woothemes-filters-tabs-navigation' );
+	} // End enqueue_scripts()
+
+	/**
+	 * Load contextual help for the admin screen.
+	 * @access  public
+	 * @since   1.0.0
+	 * @return  string Modified contextual help string.
+	 */
+	public function admin_screen_help () {
+		$screen = get_current_screen();
+		if ( $screen->id != $this->admin_page ) return;
+
+		$overview =
+			  '<p>' . __( 'Fill in the area you\'d like to customise and hit the "Save Changes" button. It\'s as easy as that!', 'woothemes' ) . '</p>' .
+			  '<p><strong>' . __( 'For more information:', 'woothemes' ) . '</strong></p>' .
+			  '<p>' . sprintf( __( '<a href="%s" target="_blank">WooThemes Help Desk</a>', 'woothemes' ), 'http://support.woothemes.com/' ) . '</p>';
+
+		$screen->add_help_tab( array( 'id' => 'filters_overview', 'title' => __( 'Overview', 'woothemes' ), 'content' => $overview ) );
+		$screen->add_help_tab( array( 'id' => 'filters_shortcode_reference', 'title' => __( 'Shortcode Reference', 'woothemes' ), 'content' => $this->_get_shortcode_reference() ) );
 	} // End admin_screen_help()
-	
-	/*----------------------------------------
- 	  admin_screen_logic()
- 	  ----------------------------------------
- 	  
- 	  * The processing logic used on the
- 	  * admin screen.
- 	----------------------------------------*/
-	
-	function admin_screen_logic () {
-		
-		// Reset logic.
-		
-		$is_processed = false;
-		
-		if ( isset( $_POST['woometa_reset'] ) && check_admin_referer( 'woometa-options-update' ) ) {
-			update_option( $this->plugin_prefix . 'stored_meta' );
-			
-			$is_processed = true;
-			
-			wp_redirect( admin_url( 'admin.php?page=woo-meta-manager&reset=true' ) );
+
+	/**
+	 * Generate and return HTML for a reference to the various supported shortcodes.
+	 * @access  private
+	 * @since   5.3.0
+	 * @return  string Description and list of shortcodes.
+	 */
+	private function _get_shortcode_reference () {
+		$html = '<p>' . __( 'Use these shortcodes to include dynamic data into your meta sections.', 'woothemes' ) . '</p>' . "\n";
+		if ( 0 < count( $this->shortcodes ) ) {
+			$count = 0;
+			foreach ( $this->shortcodes as $k => $v ) {
+				$count++;
+				if ( 1 < $count ) { $html .= '<br />'; }
+				$html .= '<code>[' . $k . ']</code> - ' . $v . '' . "\n";
+			}
 		}
-		
+		return $html;
+	} // End _get_shortcode_reference()
+
+	/**
+	 * Logic to run on the admin screen.
+	 * @access  public
+	 * @since   1.0.0
+	 * @return  void
+	 */
+	public function admin_screen_logic () {
+		$is_processed = false;
 		// Save logic.
-		
-		if ( isset( $_POST['woometa_update'] ) && check_admin_referer( 'woometa-options-update' ) ) {
-			
-			$fields_to_skip = array( 'woometa_update', '_wp_http_referer', '_wpnonce' );
-			
+		if ( isset( $_POST['submit'] ) && check_admin_referer( 'woometa-options-update' ) ) {
+			$fields_to_skip = array( 'submit', '_wp_http_referer', '_wpnonce' );
+
 			$posted_data = $_POST;
-			
+
 			foreach ( $posted_data as $k => $v ) {
-				if ( in_array( $k, $fields_to_skip ) ) {
+				if ( in_array( $k, $fields_to_skip ) || ! $this->is_valid_meta_key( $k ) ) {
 					unset( $posted_data[$k] );
 				} else {
-					$posted_data[$k] = addslashes( stripslashes( $v ) );
+					$posted_data[$k] = wp_filter_post_kses( $v );
 				}
 			}
-			
+
 			if ( is_array( $posted_data ) ) {
 				$is_updated = update_option( $this->plugin_prefix . 'stored_meta', $posted_data );
-				
+
 				// Redirect to make sure the latest changes are reflected.
-				wp_redirect( admin_url( 'admin.php?page=woo-meta-manager&updated=true' ) );
+				wp_safe_redirect( admin_url( 'admin.php?page=woo-meta-manager&updated=true' ) );
+				exit;
 			}
 			$is_processed = true;
 		}
-	
 	} // End admin_screen_logic()
-	
-	/*----------------------------------------
- 	  enqueue_scripts()
- 	  ----------------------------------------
- 	  
- 	  * Enqueue the necessary JavaScript files.
- 	----------------------------------------*/
-	
-	function enqueue_scripts () {
 
-		wp_register_script( 'woo-meta-functions', $this->plugin_url . 'assets/js/functions.js', array( 'jquery' ), '1.0.0', true );
-		
-		wp_enqueue_script( 'woo-meta-functions' ); // The dependant JavaScript files will be enqueued automatically.
-	
-	} // End enqueue_scripts()
-	
-	/*----------------------------------------
- 	  tinymce_headers()
- 	  ----------------------------------------
- 	  
- 	  * Load the necessary files for using
- 	  * the integrated tinyMCE editor.
- 	----------------------------------------*/
-	
-	function tinymce_headers () {
-
-		wp_enqueue_script( 'common' );
-		wp_enqueue_script( 'jquery-color' );
-		wp_enqueue_style( 'colors' );
-		wp_print_scripts( 'editor' );
-		if ( function_exists( 'add_thickbox' ) ) { add_thickbox(); }
-		wp_enqueue_script( 'media-upload' );
-		if ( function_exists( 'wp_tiny_mce' ) ) { wp_tiny_mce(); }
-		wp_admin_css();
-		wp_enqueue_script('utils');
-		// do_action("admin_print_styles-post-php");
-		// do_action('admin_print_styles');
-	
-	} // End tinymce_headers()
-	
-	/*----------------------------------------
- 	  enqueue_styles()
- 	  ----------------------------------------
- 	  
- 	  * Enqueue the necessary CSS files.
- 	----------------------------------------*/
-	
-	function enqueue_styles () {
-	
-		wp_register_style( 'woo-admin-interface', get_template_directory_uri() . '/functions/admin-style.css' );
-		
-		wp_enqueue_style( 'woo-admin-interface' );
-	
-	} // End enqueue_styles()
-	
-	/*----------------------------------------
- 	  create_filters()
- 	  ----------------------------------------
- 	  
- 	  * Create filters using our saved content.
- 	----------------------------------------*/
-	
-	function create_filters () {
-	
+ 	/**
+ 	 * Create filters using the saved content.
+ 	 * @access  public
+	 * @since   1.0.0
+ 	 * @return  void
+ 	 */
+	public function create_filters () {
 		if ( ! is_admin() ) {
-		
 			$stored_meta = get_option( $this->plugin_prefix . 'stored_meta' );
-			
+
 			// Create the filter functions.
-			if ( is_array( $stored_meta ) ) {
+			if ( is_array( $stored_meta ) && 0 < count( $stored_meta ) ) {
 				foreach ( $stored_meta as $k => $v ) {
+					if ( ! $this->is_valid_meta_key( $k ) ) {
+						_doing_it_wrong( __METHOD__, 'Attempting to add invalid filter: ' . $k, 'woothemes' );
+						continue;
+					}
 					$new_string = $v;
-					
-					$new_string = str_replace( '\"', '', $new_string );
-					
+
+					$new_string = str_replace( '\"', '"', $new_string );
+
 					$content = '';
-					
-					add_filter( $k, create_function( "$content", "return '$new_string';" ), 12 );
+
+					add_filter( $k, create_function( "$content", "return wp_kses_post( '$new_string' );" ), 12 );
 				}
 			}
-		
-		} // End IF Statement
-	
+		}
 	} // End create_filters()
-	
-	/*----------------------------------------
- 	  setup_shortcodes()
- 	  ----------------------------------------
- 	  
- 	  * Setup shortcodes for reference.
- 	----------------------------------------*/
-	
-	function setup_shortcodes() {
-	
+
+	/**
+	 * Make sure a specified meta key is valid.
+	 * @access  public
+	 * @since   1.0.0
+	 * @return  void
+	 */
+	private function is_valid_meta_key( $meta_key ) {
+		$exists = false;
+		if ( 0 < count( $this->meta_areas ) ) {
+			foreach ( $this->meta_areas as $id => $meta_area ) {
+				if ( array_key_exists( $meta_key, $meta_area ) ) {
+					$exists = true;
+					break;
+				}
+			}
+		}
+		return $exists;
+	} // End is_valid_meta_key()
+
+	/**
+	 * Setup the shortcodes for reference.
+	 * @access  public
+	 * @since   1.0.0
+	 * @return  void
+	 */
+	public function setup_shortcodes() {
 		$this->shortcodes = array();
 		$this->shortcodes['view_full_article'] = __( 'Link to read the full post.', 'woothemes' );
 		$this->shortcodes['post_date'] = __( 'The post date.', 'woothemes' );
@@ -369,24 +403,19 @@ class Woo_Meta {
 		$this->shortcodes['post_tags'] = __( 'Tags for the post.', 'woothemes' );
 		$this->shortcodes['post_categories'] = __( 'Categories for the post.', 'woothemes' );
 		$this->shortcodes['post_edit'] = __( '"Edit" link for the post.', 'woothemes' );
-	
 	} // End setup_shortcodes()
-	
-	/*----------------------------------------
- 	  add_exporter_data()
- 	  ----------------------------------------
- 	  
- 	  * Add our saved data to the WooFramework
- 	  * data exporter.
- 	----------------------------------------*/
-	
-	function add_exporter_data ( $data ) {
-		
-		$data .= " OR option_name = '" . $this->plugin_prefix . "stored_meta" . "'";
-		
-		return $data;
-		
-	} // End add_exporter_data()
 
+ 	/**
+ 	 * Add our saved data to the WooFramework data exporter.
+ 	 * @access  public
+	 * @since   1.0.0
+ 	 * @param   string $data SQL query.
+ 	 * @return  string SQL query.
+ 	 */
+	public function add_exporter_data ( $data ) {
+		$data .= " OR option_name = '" . $this->plugin_prefix . "stored_meta" . "'";
+
+		return $data;
+	} // End add_exporter_data()
 } // End Class
 ?>

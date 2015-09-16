@@ -21,7 +21,7 @@ get_header();
 
             <!-- #main Starts -->
             <?php woo_main_before(); ?>
-            <div id="main">                     
+            <section id="main">                     
 <?php
 	woo_loop_before();
 	
@@ -33,7 +33,7 @@ get_header();
 	
 	woo_loop_after();
 ?>     
-            </div><!-- /#main -->
+            </section><!-- /#main -->
             <?php woo_main_after(); ?>
     
             <?php get_sidebar(); ?>

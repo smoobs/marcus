@@ -20,9 +20,9 @@
 		
             <!-- #main Starts -->
             <?php woo_main_before(); ?>
-            <div id="main" class="col-left">
+            <section id="main" class="col-left">
             	<?php get_template_part( 'loop', 'tumblog' ); ?>
-            </div><!-- /#main -->
+            </section><!-- /#main -->
             <?php woo_main_after(); ?>
     
             <?php get_sidebar(); ?>

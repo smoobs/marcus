@@ -26,12 +26,12 @@ class Woo_Widget_Flickr extends WP_Widget {
 	/*----------------------------------------
 	  Constructor.
 	  ----------------------------------------
-	  
+
 	  * The constructor. Sets up the widget.
 	----------------------------------------*/
-	
-	function Woo_Widget_Flickr () {
-		
+
+	function __construct() {
+
 		/* Widget settings. */
 		$widget_ops = array( 'classname' => 'widget_woo_flickr', 'description' => __( 'This Flickr widget populates photos from a Flickr ID.', 'woothemes' ) );
 
@@ -39,32 +39,32 @@ class Woo_Widget_Flickr extends WP_Widget {
 		$control_ops = array( 'width' => 250, 'height' => 350, 'id_base' => 'woo_flickr' );
 
 		/* Create the widget. */
-		$this->WP_Widget( 'woo_flickr', __('Woo - Flickr', 'woothemes' ), $widget_ops, $control_ops );
-		
+		parent::__construct( 'woo_flickr', __('Woo - Flickr', 'woothemes' ), $widget_ops, $control_ops );
+
 	} // End Constructor
 
 	/*----------------------------------------
 	  widget()
 	  ----------------------------------------
-	  
+
 	  * Displays the widget on the frontend.
 	----------------------------------------*/
 
-	function widget( $args, $instance ) {  
-		
+	function widget( $args, $instance ) {
+
 		$html = '';
-		
+
 		extract( $args, EXTR_SKIP );
-		
+
 		/* Our variables from the widget settings. */
 		$title = apply_filters('widget_title', $instance['title'], $instance, $this->id_base );
-		
-		$number = $instance['number']; if ( ! intval( $number ) ) { $number = 5; }
-		$id = $instance['id'];
-		$sorting = $instance['sorting'];
-		$type = $instance['type'];
-		$size = $instance['size'];
-		
+
+		$number = ! empty( $instance['number'] ) ? $instance['number'] : 5;
+		$id = ! empty( $instance['id'] ) ? $instance['id'] : '';
+		$sorting = ! empty( $instance['sorting'] ) ? $instance['sorting'] : '';
+		$type = ! empty( $instance['type'] ) ? $instance['type'] : '';
+		$size = ! empty( $instance['size'] ) ? $instance['size'] : '';
+
 		/* Before widget (defined by themes). */
 		echo $before_widget;
 
@@ -73,43 +73,43 @@ class Woo_Widget_Flickr extends WP_Widget {
 
 		/* Display the widget title if one was input (before and after defined by themes). */
 		if ( $title ) {
-		
+
 			echo $before_title . $title . $after_title;
-		
+
 		} // End IF Statement
-		
+
 		/* Widget content. */
-		
+
 		// Add actions for plugins/themes to hook onto.
 		do_action( 'widget_woo_flickr_top' );
-		
+
 		$html = '';
-		
+
 		/* Construct the remainder of the query string, using only the non-empty fields. */
 		$fields = array(
-						'count' => $number, 
-						'display' => $sorting, 
-						'source' => $type, 
-						$type => $id, 
-						'size' => $size
+						'count'		=> $number,
+						'display'	=> $sorting,
+						'source'	=> $type,
+						$type		=> $id,
+						'size'		=> $size
 					);
-					
+
 		$query_string = '';
-		
+
 		foreach ( $fields as $k => $v ) {
 			if ( $v == '' ) {} else {
 				$query_string .= '&amp;' . $k . '=' . $v;
 			}
 		}
-		
+
 		$html .= '<div class="wrap">' . "\n";
 			$html .= '<div class="fix"></div><!--/.fix-->' . "\n";
 				$html .= '<script type="text/javascript" src="http://www.flickr.com/badge_code_v2.gne?layout=x' . $query_string . '"></script>' . "\n";
 			$html .= '<div class="fix"></div><!--/.fix-->' . "\n";
 		$html .= '</div><!--/.wrap-->' . "\n";
-		
+
 		echo $html;
-		
+
 		// Add actions for plugins/themes to hook onto.
 		do_action( 'widget_woo_flickr_bottom' );
 
@@ -121,55 +121,57 @@ class Woo_Widget_Flickr extends WP_Widget {
    /*----------------------------------------
 	  update()
 	  ----------------------------------------
-	  
+
 	  * Function to update the settings from
 	  * the form() function.
-	  
+
 	  * Params:
 	  * - Array $new_instance
 	  * - Array $old_instance
 	----------------------------------------*/
-	
-	function update ( $new_instance, $old_instance ) {
-		
-		$instance = $old_instance;
 
-		/* Strip tags for title and name to remove HTML (important for text inputs). */
-		$instance['title'] = strip_tags( $new_instance['title'] );
-		$instance['id'] = strip_tags( $new_instance['id'] );
-		$instance['number'] = intval( esc_attr( $new_instance['number'] ) );
-		$instance['type'] = esc_attr( $new_instance['type'] );
-		$instance['sorting'] = esc_attr( $new_instance['sorting'] );
-		$instance['size'] = esc_attr( $new_instance['size'] );
-		
-		return $instance;
-		
+	function update ( $new_instance, $old_instance ) {
+		$settings = array();
+
+		foreach ( array( 'title', 'id', 'type', 'sorting', 'size' ) as $setting ) {
+			if ( isset( $new_instance[$setting] ) ) {
+				$settings[$setting] = sanitize_text_field( $new_instance[$setting] );
+			}
+		}
+
+		foreach ( array( 'number' ) as $setting ) {
+			if ( isset( $new_instance[$setting] ) ) {
+				$settings[$setting] = absint( $new_instance[$setting] );
+			}
+		}
+
+		return $settings;
 	} // End update()
 
    /*----------------------------------------
 	  form()
 	  ----------------------------------------
-	  
+
 	  * The form on the widget control in the
 	  * widget administration area.
-	  
-	  * Make use of the get_field_id() and 
+
+	  * Make use of the get_field_id() and
 	  * get_field_name() function when creating
 	  * your form elements. This handles the confusing stuff.
-	  
+
 	  * Params:
 	  * - Array $instance
 	----------------------------------------*/
 
-   function form( $instance ) {       
-   
+   function form( $instance ) {
+
        /* Set up some default widget settings. */
 		$defaults = array(
-						'title' => '', 
-						'id' => '', 
-						'number' => '', 
-						'type' => 'user', 
-						'sorting' => 'latest', 
+						'title' => '',
+						'id' => '',
+						'number' => '',
+						'type' => 'user',
+						'sorting' => 'latest',
 						'size' => 's'
 					);
 
@@ -199,7 +201,7 @@ class Woo_Widget_Flickr extends WP_Widget {
 		    <label for="<?php echo $this->get_field_id( 'type' ); ?>"><?php _e( 'Type:', 'woothemes' ); ?></label>
 		    <select name="<?php echo $this->get_field_name( 'type' ); ?>" class="widefat" id="<?php echo $this->get_field_id( 'type' ); ?>">
 		        <option value="user"<?php selected( $instance['type'], 'user' ); ?>><?php _e( 'User', 'woothemes' ); ?></option>
-		        <option value="group"<?php selected( $instance['type'], 'group' ); ?>><?php _e( 'Group', 'woothemes' ); ?></option>            
+		        <option value="group"<?php selected( $instance['type'], 'group' ); ?>><?php _e( 'Group', 'woothemes' ); ?></option>
 		    </select>
 		</p>
 		<!-- Widget Sorting: Select Input -->
@@ -207,7 +209,7 @@ class Woo_Widget_Flickr extends WP_Widget {
 		    <label for="<?php echo $this->get_field_id( 'sorting' ); ?>"><?php _e( 'Sorting:', 'woothemes' ); ?></label>
 		    <select name="<?php echo $this->get_field_name( 'sorting' ); ?>" class="widefat" id="<?php echo $this->get_field_id( 'sorting' ); ?>">
 		        <option value="latest"<?php selected( $instance['sorting'], 'latest' ); ?>><?php _e( 'Latest', 'woothemes' ); ?></option>
-		        <option value="random"<?php selected( $instance['sorting'], 'random' ); ?>><?php _e( 'Random', 'woothemes' ); ?></option>            
+		        <option value="random"<?php selected( $instance['sorting'], 'random' ); ?>><?php _e( 'Random', 'woothemes' ); ?></option>
 		    </select>
 		</p>
 		<!-- Widget Size: Select Input -->
@@ -221,15 +223,15 @@ class Woo_Widget_Flickr extends WP_Widget {
 		</p>
 <?php
 	} // End form()
-	
+
 } // End Class
 
 /*----------------------------------------
   Register the widget on `widgets_init`.
   ----------------------------------------
-  
+
   * Registers this widget.
 ----------------------------------------*/
 
-add_action( 'widgets_init', create_function( '', 'return register_widget("Woo_Widget_Flickr");' ), 1 ); 
+add_action( 'widgets_init', create_function( '', 'return register_widget("Woo_Widget_Flickr");' ), 1 );
 ?>

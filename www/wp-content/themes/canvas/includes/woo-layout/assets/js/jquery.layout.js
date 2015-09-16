@@ -1,133 +1,2507 @@
 /*
- jquery.layout 1.3.0 - Release Candidate 29.8
- $Date: 2010-09-27 08:00:00 (Mon, 27 Sep 2010) $
- $Rev: 30298 $
+ * jquery.layout 1.2.0
+ *
+ * Copyright (c) 2008 
+ *   Fabrizio Balliano (http://www.fabrizioballiano.net)
+ *   Kevin Dalman (http://allpro.net)
+ *
+ * Dual licensed under the GPL (http://www.gnu.org/licenses/gpl.html)
+ * and MIT (http://www.opensource.org/licenses/mit-license.php) licenses.
+ *
+ * $Date: 2008-12-27 02:17:22 +0100 (sab, 27 dic 2008) $
+ * $Rev: 203 $
+ * 
+ * NOTE: For best code readability, view this with a fixed-space font and tabs equal to 4-chars
+ */
+(function($) {
 
- Copyright (c) 2010 
- Fabrizio Balliano (http://www.fabrizioballiano.net)
- Kevin Dalman (http://allpro.net)
+$.fn.layout = function (opts) {
 
- Dual licensed under the GPL (http://www.gnu.org/licenses/gpl.html)
- and MIT (http://www.opensource.org/licenses/mit-license.php) licenses.
+/*
+ * ###########################
+ *   WIDGET CONFIG & OPTIONS
+ * ###########################
+ */
 
- Docs: http://layout.jquery-dev.net/documentation.html
- Tips: http://layout.jquery-dev.net/tips.html
- Help: http://groups.google.com/group/jquery-ui-layout
-*/
-(function($){var $b=$.browser;$.layout={browser:{mozilla:$b.mozilla,webkit:$b.webkit||$b.safari||false,msie:$b.msie,isIE6:$b.msie&&$b.version==6,boxModel:false},scrollbarWidth:function(){return window.scrollbarWidth||$.layout.getScrollbarSize("width")},scrollbarHeight:function(){return window.scrollbarHeight||$.layout.getScrollbarSize("height")},getScrollbarSize:function(dim){var $c=$('<div style="position: absolute; top: -10000px; left: -10000px; width: 100px; height: 100px; overflow: scroll;"></div>').appendTo("body");
-var d={width:$c.width()-$c[0].clientWidth,height:$c.height()-$c[0].clientHeight};$c.remove();window.scrollbarWidth=d.width;window.scrollbarHeight=d.height;return dim.match(/^(width|height)$/i)?d[dim]:d},showInvisibly:function($E,force){if(!$E)return{};if(!$E.jquery)$E=$($E);var CSS={display:$E.css("display"),visibility:$E.css("visibility")};if(force||CSS.display=="none"){$E.css({display:"block",visibility:"hidden"});return CSS}else return{}},getElemDims:function($E){var d={},x=d.css={},i={},b,p,off=
-$E.offset();d.offsetLeft=off.left;d.offsetTop=off.top;$.each("Left,Right,Top,Bottom".split(","),function(idx,e){b=x["border"+e]=$.layout.borderWidth($E,e);p=x["padding"+e]=$.layout.cssNum($E,"padding"+e);i[e]=b+p;d["inset"+e]=p});d.offsetWidth=$E.innerWidth();d.offsetHeight=$E.innerHeight();d.outerWidth=$E.outerWidth();d.outerHeight=$E.outerHeight();d.innerWidth=d.outerWidth-i.Left-i.Right;d.innerHeight=d.outerHeight-i.Top-i.Bottom;x.width=$E.width();x.height=$E.height();return d},getElemCSS:function($E,
-list){var CSS={},style=$E[0].style,props=list.split(","),sides="Top,Bottom,Left,Right".split(","),attrs="Color,Style,Width".split(","),p,s,a,i,j,k;for(i=0;i<props.length;i++){p=props[i];if(p.match(/(border|padding|margin)$/))for(j=0;j<4;j++){s=sides[j];if(p=="border")for(k=0;k<3;k++){a=attrs[k];CSS[p+s+a]=style[p+s+a]}else CSS[p+s]=style[p+s]}else CSS[p]=style[p]}return CSS},cssWidth:function($E,outerWidth){var b=$.layout.borderWidth,n=$.layout.cssNum;if(outerWidth<=0)return 0;if(!$.layout.browser.boxModel)return outerWidth;
-var W=outerWidth-b($E,"Left")-b($E,"Right")-n($E,"paddingLeft")-n($E,"paddingRight");return W>0?W:0},cssHeight:function($E,outerHeight){var b=$.layout.borderWidth,n=$.layout.cssNum;if(outerHeight<=0)return 0;if(!$.layout.browser.boxModel)return outerHeight;var H=outerHeight-b($E,"Top")-b($E,"Bottom")-n($E,"paddingTop")-n($E,"paddingBottom");return H>0?H:0},cssNum:function($E,prop){if(!$E.jquery)$E=$($E);var CSS=$.layout.showInvisibly($E);var val=parseInt($.curCSS($E[0],prop,true),10)||0;$E.css(CSS);
-return val},borderWidth:function(el,side){if(el.jquery)el=el[0];var b="border"+side.substr(0,1).toUpperCase()+side.substr(1);return $.curCSS(el,b+"Style",true)=="none"?0:parseInt($.curCSS(el,b+"Width",true),10)||0}};$.fn.layout=function(opts){var lang={Pane:"Pane",Open:"Open",Close:"Close",Resize:"Resize",Slide:"Slide Open",Pin:"Pin",Unpin:"Un-Pin",selector:"selector",msgNoRoom:"Not enough room to show this pane.",errContainerMissing:"UI Layout Initialization Error\n\nThe specified layout-container does not exist.",
-errCenterPaneMissing:"UI Layout Initialization Error\n\nThe center-pane element does not exist.\n\nThe center-pane is a required element.",errContainerHeight:"UI Layout Initialization Warning\n\nThe layout-container \"CONTAINER\" has no height.\n\nTherefore the layout is 0-height and hence 'invisible'!",errButton:"Error Adding Button \n\nInvalid "};var options={name:"",scrollToBookmarkOnLoad:true,resizeWithWindow:true,resizeWithWindowDelay:200,resizeWithWindowMaxDelay:0,onresizeall_start:null,onresizeall_end:null,
-onload:null,onunload:null,autoBindCustomButtons:false,zIndex:null,defaults:{applyDemoStyles:false,closable:true,resizable:true,slidable:true,initClosed:false,initHidden:false,contentSelector:".ui-layout-content",contentIgnoreSelector:".ui-layout-ignore",findNestedContent:false,paneClass:"ui-layout-pane",resizerClass:"ui-layout-resizer",togglerClass:"ui-layout-toggler",buttonClass:"ui-layout-button",minSize:0,maxSize:0,spacing_open:6,spacing_closed:6,togglerLength_open:50,togglerLength_closed:50,togglerAlign_open:"center",
-togglerAlign_closed:"center",togglerTip_open:lang.Close,togglerTip_closed:lang.Open,togglerContent_open:"",togglerContent_closed:"",resizerDblClickToggle:true,autoResize:true,autoReopen:true,resizerDragOpacity:1,maskIframesOnResize:true,resizeNestedLayout:true,resizeWhileDragging:false,resizeContentWhileDragging:false,noRoomToOpenTip:lang.msgNoRoom,resizerTip:lang.Resize,sliderTip:lang.Slide,sliderCursor:"pointer",slideTrigger_open:"click",slideTrigger_close:"mouseleave",hideTogglerOnSlide:false,
-preventQuickSlideClose:!!($.browser.webkit||$.browser.safari),showOverflowOnHover:false,enableCursorHotkey:true,customHotkeyModifier:"SHIFT",fxName:"slide",fxSpeed:null,fxSettings:{},fxOpacityFix:true,triggerEventsOnLoad:false,triggerEventsWhileDragging:true,onshow_start:null,onshow_end:null,onhide_start:null,onhide_end:null,onopen_start:null,onopen_end:null,onclose_start:null,onclose_end:null,onresize_start:null,onresize_end:null,onsizecontent_start:null,onsizecontent_end:null,onswap_start:null,
-onswap_end:null,ondrag_start:null,ondrag_end:null},north:{paneSelector:".ui-layout-north",size:"auto",resizerCursor:"n-resize",customHotkey:""},south:{paneSelector:".ui-layout-south",size:"auto",resizerCursor:"s-resize",customHotkey:""},east:{paneSelector:".ui-layout-east",size:200,resizerCursor:"e-resize",customHotkey:""},west:{paneSelector:".ui-layout-west",size:200,resizerCursor:"w-resize",customHotkey:""},center:{paneSelector:".ui-layout-center",minWidth:0,minHeight:0},useStateCookie:false,cookie:{name:"",
-autoSave:true,autoLoad:true,domain:"",path:"",expires:"",secure:false,keys:"north.size,south.size,east.size,west.size,"+"north.isClosed,south.isClosed,east.isClosed,west.isClosed,"+"north.isHidden,south.isHidden,east.isHidden,west.isHidden"}};var effects={slide:{all:{duration:"fast"},north:{direction:"up"},south:{direction:"down"},east:{direction:"right"},west:{direction:"left"}},drop:{all:{duration:"slow"},north:{direction:"up"},south:{direction:"down"},east:{direction:"right"},west:{direction:"left"}},
-scale:{all:{duration:"fast"}}};var state={id:"layout"+(new Date).getTime(),initialized:false,container:{},north:{},south:{},east:{},west:{},center:{},cookie:{}};var _c={allPanes:"north,south,west,east,center",borderPanes:"north,south,west,east",altSide:{north:"south",south:"north",east:"west",west:"east"},hidden:{visibility:"hidden"},visible:{visibility:"visible"},zIndex:{pane_normal:1,resizer_normal:2,iframe_mask:2,pane_sliding:100,pane_animate:1E3,resizer_drag:1E4},resizers:{cssReq:{position:"absolute",
-padding:0,margin:0,fontSize:"1px",textAlign:"left",overflow:"hidden"},cssDemo:{background:"#DDD",border:"none"}},togglers:{cssReq:{position:"absolute",display:"block",padding:0,margin:0,overflow:"hidden",textAlign:"center",fontSize:"1px",cursor:"pointer",zIndex:1},cssDemo:{background:"#AAA"}},content:{cssReq:{position:"relative"},cssDemo:{overflow:"auto",padding:"10px"},cssDemoPane:{overflow:"hidden",padding:0}},panes:{cssReq:{position:"absolute",margin:0},cssDemo:{padding:"10px",background:"#FFF",
-border:"1px solid #BBB",overflow:"auto"}},north:{side:"Top",sizeType:"Height",dir:"horz",cssReq:{top:0,bottom:"auto",left:0,right:0,width:"auto"},pins:[]},south:{side:"Bottom",sizeType:"Height",dir:"horz",cssReq:{top:"auto",bottom:0,left:0,right:0,width:"auto"},pins:[]},east:{side:"Right",sizeType:"Width",dir:"vert",cssReq:{left:"auto",right:0,top:"auto",bottom:"auto",height:"auto"},pins:[]},west:{side:"Left",sizeType:"Width",dir:"vert",cssReq:{left:0,right:"auto",top:"auto",bottom:"auto",height:"auto"},
-pins:[]},center:{dir:"center",cssReq:{left:"auto",right:"auto",top:"auto",bottom:"auto",height:"auto",width:"auto"}}};var timer={data:{},set:function(s,fn,ms){timer.clear(s);timer.data[s]=setTimeout(fn,ms)},clear:function(s){var t=timer.data;if(t[s]){clearTimeout(t[s]);delete t[s]}}};var isStr=function(o){try{return typeof o=="string"||typeof o=="object"&&o.constructor.toString().match(/string/i)!==null}catch(e){return false}};var str=function(o){return isStr(o)?$.trim(o):o==undefined||o==null?"":
-o};var min=function(x,y){return Math.min(x,y)};var max=function(x,y){return Math.max(x,y)};var _transformData=function(d){var a,json={cookie:{},defaults:{fxSettings:{}},north:{fxSettings:{}},south:{fxSettings:{}},east:{fxSettings:{}},west:{fxSettings:{}},center:{fxSettings:{}}};d=d||{};if(d.effects||d.cookie||d.defaults||d.north||d.south||d.west||d.east||d.center)json=$.extend(true,json,d);else $.each(d,function(key,val){a=key.split("__");if(!a[1]||json[a[0]])json[a[1]?a[0]:"defaults"][a[1]?a[1]:
-a[0]]=val});return json};var _queue=function(action,pane,param){var tried=[];$.each(_c.borderPanes.split(","),function(i,p){if(_c[p].isMoving){bindCallback(p);return false}});function bindCallback(p){var c=_c[p];if(!c.doCallback){c.doCallback=true;c.callback=action+","+pane+","+(param?1:0)}else{tried.push(p);var cbPane=c.callback.split(",")[1];if(cbPane!=pane&&!$.inArray(cbPane,tried)>=0)bindCallback(cbPane)}}};var _dequeue=function(pane){var c=_c[pane];_c.isLayoutBusy=false;delete c.isMoving;if(!c.doCallback||
-!c.callback)return;c.doCallback=false;var cb=c.callback.split(","),param=cb[2]>0?true:false;if(cb[0]=="open")open(cb[1],param);else if(cb[0]=="close")close(cb[1],param);if(!c.doCallback)c.callback=null};var _execCallback=function(pane,v_fn){if(!v_fn)return;var fn;try{if(typeof v_fn=="function")fn=v_fn;else if(!isStr(v_fn))return;else if(v_fn.match(/,/)){var args=v_fn.split(",");fn=eval(args[0]);if(typeof fn=="function"&&args.length>1)return fn(args[1])}else fn=eval(v_fn);if(typeof fn=="function")if(pane&&
-$Ps[pane])return fn(pane,$Ps[pane],$.extend({},state[pane]),options[pane],options.name);else return fn(Instance,$.extend({},state),options,options.name)}catch(ex){}};var _showInvisibly=function($E,force){if(!$E)return{};if(!$E.jquery)$E=$($E);var CSS={display:$E.css("display"),visibility:$E.css("visibility")};if(force||CSS.display=="none"){$E.css({display:"block",visibility:"hidden"});return CSS}else return{}};var _fixIframe=function(pane){if(state.browser.mozilla)return;var $P=$Ps[pane];if(state[pane].tagName==
-"IFRAME")$P.css(_c.hidden).css(_c.visible);else $P.find("IFRAME").css(_c.hidden).css(_c.visible)};var _cssNum=function($E,prop){if(!$E.jquery)$E=$($E);var CSS=_showInvisibly($E);var val=parseInt($.curCSS($E[0],prop,true),10)||0;$E.css(CSS);return val};var _borderWidth=function(E,side){if(E.jquery)E=E[0];var b="border"+side.substr(0,1).toUpperCase()+side.substr(1);return $.curCSS(E,b+"Style",true)=="none"?0:parseInt($.curCSS(E,b+"Width",true),10)||0};var cssW=function(el,outerWidth){var str=isStr(el),
-$E=str?$Ps[el]:$(el);if(isNaN(outerWidth))outerWidth=str?getPaneSize(el):$E.outerWidth();if(outerWidth<=0)return 0;if(!state.browser.boxModel)return outerWidth;var W=outerWidth-_borderWidth($E,"Left")-_borderWidth($E,"Right")-_cssNum($E,"paddingLeft")-_cssNum($E,"paddingRight");return W>0?W:0};var cssH=function(el,outerHeight){var str=isStr(el),$E=str?$Ps[el]:$(el);if(isNaN(outerHeight))outerHeight=str?getPaneSize(el):$E.outerHeight();if(outerHeight<=0)return 0;if(!state.browser.boxModel)return outerHeight;
-var H=outerHeight-_borderWidth($E,"Top")-_borderWidth($E,"Bottom")-_cssNum($E,"paddingTop")-_cssNum($E,"paddingBottom");return H>0?H:0};var cssSize=function(pane,outerSize){if(_c[pane].dir=="horz")return cssH(pane,outerSize);else return cssW(pane,outerSize)};var cssMinDims=function(pane){var dir=_c[pane].dir,d={minWidth:1001-cssW(pane,1E3),minHeight:1001-cssH(pane,1E3)};if(dir=="horz")d.minSize=d.minHeight;if(dir=="vert")d.minSize=d.minWidth;return d};var setOuterWidth=function(el,outerWidth,autoHide){var $E=
-el,w;if(isStr(el))$E=$Ps[el];else if(!el.jquery)$E=$(el);w=cssW($E,outerWidth);$E.css({width:w});if(w>0){if(autoHide&&$E.data("autoHidden")&&$E.innerHeight()>0){$E.show().data("autoHidden",false);if(!state.browser.mozilla)$E.css(_c.hidden).css(_c.visible)}}else if(autoHide&&!$E.data("autoHidden"))$E.hide().data("autoHidden",true)};var setOuterHeight=function(el,outerHeight,autoHide){var $E=el,h;if(isStr(el))$E=$Ps[el];else if(!el.jquery)$E=$(el);h=cssH($E,outerHeight);$E.css({height:h,visibility:"visible"});
-if(h>0&&$E.innerWidth()>0){if(autoHide&&$E.data("autoHidden")){$E.show().data("autoHidden",false);if(!state.browser.mozilla)$E.css(_c.hidden).css(_c.visible)}}else if(autoHide&&!$E.data("autoHidden"))$E.hide().data("autoHidden",true)};var setOuterSize=function(el,outerSize,autoHide){if(_c[pane].dir=="horz")setOuterHeight(el,outerSize,autoHide);else setOuterWidth(el,outerSize,autoHide)};var _parseSize=function(pane,size,dir){if(!dir)dir=_c[pane].dir;if(isStr(size)&&size.match(/%/))size=parseInt(size,
-10)/100;if(size===0)return 0;else if(size>=1)return parseInt(size,10);else if(size>0){var o=options,avail;if(dir=="horz")avail=sC.innerHeight-($Ps.north?o.north.spacing_open:0)-($Ps.south?o.south.spacing_open:0);else if(dir=="vert")avail=sC.innerWidth-($Ps.west?o.west.spacing_open:0)-($Ps.east?o.east.spacing_open:0);return Math.floor(avail*size)}else if(pane=="center")return 0;else{var $P=$Ps[pane],dim=dir=="horz"?"height":"width",vis=_showInvisibly($P),s=$P.css(dim);$P.css(dim,"auto");size=dim==
-"height"?$P.outerHeight():$P.outerWidth();$P.css(dim,s).css(vis);return size}};var getPaneSize=function(pane,inclSpace){var $P=$Ps[pane],o=options[pane],s=state[pane],oSp=inclSpace?o.spacing_open:0,cSp=inclSpace?o.spacing_closed:0;if(!$P||s.isHidden)return 0;else if(s.isClosed||s.isSliding&&inclSpace)return cSp;else if(_c[pane].dir=="horz")return $P.outerHeight()+oSp;else return $P.outerWidth()+oSp};var setSizeLimits=function(pane,slide){var o=options[pane],s=state[pane],c=_c[pane],dir=c.dir,side=
-c.side.toLowerCase(),type=c.sizeType.toLowerCase(),isSliding=slide!=undefined?slide:s.isSliding,$P=$Ps[pane],paneSpacing=o.spacing_open,altPane=_c.altSide[pane],altS=state[altPane],$altP=$Ps[altPane],altPaneSize=!$altP||altS.isVisible===false||altS.isSliding?0:dir=="horz"?$altP.outerHeight():$altP.outerWidth(),altPaneSpacing=(!$altP||altS.isHidden?0:options[altPane][altS.isClosed!==false?"spacing_closed":"spacing_open"])||0,containerSize=dir=="horz"?sC.innerHeight:sC.innerWidth,minCenterDims=cssMinDims("center"),
-minCenterSize=dir=="horz"?max(options.center.minHeight,minCenterDims.minHeight):max(options.center.minWidth,minCenterDims.minWidth),limitSize=containerSize-paneSpacing-(isSliding?0:_parseSize("center",minCenterSize,dir)+altPaneSize+altPaneSpacing),minSize=s.minSize=max(_parseSize(pane,o.minSize),cssMinDims(pane).minSize),maxSize=s.maxSize=min(o.maxSize?_parseSize(pane,o.maxSize):1E5,limitSize),r=s.resizerPosition={},top=sC.insetTop,left=sC.insetLeft,W=sC.innerWidth,H=sC.innerHeight,rW=o.spacing_open;
-switch(pane){case "north":r.min=top+minSize;r.max=top+maxSize;break;case "west":r.min=left+minSize;r.max=left+maxSize;break;case "south":r.min=top+H-maxSize-rW;r.max=top+H-minSize-rW;break;case "east":r.min=left+W-maxSize-rW;r.max=left+W-minSize-rW;break}};var calcNewCenterPaneDims=function(){var d={top:getPaneSize("north",true),bottom:getPaneSize("south",true),left:getPaneSize("west",true),right:getPaneSize("east",true),width:0,height:0};d.width=sC.innerWidth-d.left-d.right;d.height=sC.innerHeight-
-d.bottom-d.top;d.top+=sC.insetTop;d.bottom+=sC.insetBottom;d.left+=sC.insetLeft;d.right+=sC.insetRight;return d};var getElemDims=function($E){var d={},x=d.css={},i={},b,p,off=$E.offset();d.offsetLeft=off.left;d.offsetTop=off.top;$.each("Left,Right,Top,Bottom".split(","),function(idx,e){b=x["border"+e]=_borderWidth($E,e);p=x["padding"+e]=_cssNum($E,"padding"+e);i[e]=b+p;d["inset"+e]=p});d.offsetWidth=$E.innerWidth();d.offsetHeight=$E.innerHeight();d.outerWidth=$E.outerWidth();d.outerHeight=$E.outerHeight();
-d.innerWidth=d.outerWidth-i.Left-i.Right;d.innerHeight=d.outerHeight-i.Top-i.Bottom;x.width=$E.width();x.height=$E.height();return d};var getElemCSS=function($E,list){var CSS={},style=$E[0].style,props=list.split(","),sides="Top,Bottom,Left,Right".split(","),attrs="Color,Style,Width".split(","),p,s,a,i,j,k;for(i=0;i<props.length;i++){p=props[i];if(p.match(/(border|padding|margin)$/))for(j=0;j<4;j++){s=sides[j];if(p=="border")for(k=0;k<3;k++){a=attrs[k];CSS[p+s+a]=style[p+s+a]}else CSS[p+s]=style[p+
-s]}else CSS[p]=style[p]}return CSS};var getHoverClasses=function(el,allStates){var $El=$(el),type=$El.data("layoutRole"),pane=$El.data("layoutEdge"),o=options[pane],root=o[type+"Class"],_pane="-"+pane,_open="-open",_closed="-closed",_slide="-sliding",_hover="-hover ",_state=$El.hasClass(root+_closed)?_closed:_open,_alt=_state==_closed?_open:_closed,classes=root+_hover+(root+_pane+_hover)+(root+_state+_hover)+(root+_pane+_state+_hover);if(allStates)classes+=root+_alt+_hover+(root+_pane+_alt+_hover);
-if(type=="resizer"&&$El.hasClass(root+_slide))classes+=root+_slide+_hover+(root+_pane+_slide+_hover);return $.trim(classes)};var addHover=function(evt,el){var e=el||this;$(e).addClass(getHoverClasses(e))};var removeHover=function(evt,el){var e=el||this;$(e).removeClass(getHoverClasses(e,true))};var onResizerEnter=function(evt){$("body").disableSelection();addHover(evt,this)};var onResizerLeave=function(evt,el){var e=el||this,pane=$(e).data("layoutEdge"),name=pane+"ResizerLeave";timer.clear(name);
-if(!el){removeHover(evt,this);timer.set(name,function(){onResizerLeave(evt,e)},200)}else if(!state[pane].isResizing)$("body").enableSelection()};var _create=function(){initOptions();var o=options;if(false===_execCallback(null,o.onload))return false;if(!getPane("center").length){alert(lang.errCenterPaneMissing);return null}if(o.useStateCookie&&o.cookie.autoLoad)loadCookie();state.browser={mozilla:$.browser.mozilla,webkit:$.browser.webkit||$.browser.safari,msie:$.browser.msie,isIE6:$.browser.msie&&
-$.browser.version==6,boxModel:$.support.boxModel};initContainer();initPanes();sizeContent();if(o.scrollToBookmarkOnLoad){var l=self.location;if(l.hash)l.replace(l.hash)}if(o.autoBindCustomButtons)initButtons();initHotkeys();if(o.resizeWithWindow&&!$Container.data("layoutRole"))$(window).bind("resize."+sID,windowResize);$(window).bind("unload."+sID,unload);state.initialized=true};var windowResize=function(){var delay=Number(options.resizeWithWindowDelay)||100;if(delay>0){timer.clear("winResize");timer.set("winResize",
-function(){timer.clear("winResize");timer.clear("winResizeRepeater");resizeAll()},delay);if(!timer.data["winResizeRepeater"])setWindowResizeRepeater()}};var setWindowResizeRepeater=function(){var delay=Number(options.resizeWithWindowMaxDelay);if(delay>0)timer.set("winResizeRepeater",function(){setWindowResizeRepeater();resizeAll()},delay)};var unload=function(){var o=options;state.cookie=getState();if(o.useStateCookie&&o.cookie.autoSave)saveCookie();_execCallback(null,o.onunload)};var initContainer=
-function(){var $C=$Container,tag=sC.tagName=$C.attr("tagName"),fullPage=tag=="BODY",props="position,margin,padding,border",CSS={};sC.selector=$C.selector.split(".slice")[0];sC.ref=tag+"/"+sC.selector;$C.data("layoutContainer",sID).data("layoutName",options.name);if(!$C.data("layoutCSS")){if(fullPage){CSS=$.extend(getElemCSS($C,props),{height:$C.css("height"),overflow:$C.css("overflow"),overflowX:$C.css("overflowX"),overflowY:$C.css("overflowY")});var $H=$("html");$H.data("layoutCSS",{height:"auto",
-overflow:$H.css("overflow"),overflowX:$H.css("overflowX"),overflowY:$H.css("overflowY")})}else CSS=getElemCSS($C,props+",top,bottom,left,right,width,height,overflow,overflowX,overflowY");$C.data("layoutCSS",CSS)}try{if(fullPage){$("html").css({height:"100%",overflow:"hidden",overflowX:"hidden",overflowY:"hidden"});$("body").css({position:"relative",height:"100%",overflow:"hidden",overflowX:"hidden",overflowY:"hidden",margin:0,padding:0,border:"none"})}else{CSS={overflow:"hidden"};var p=$C.css("position"),
-h=$C.css("height");if(!$C.data("layoutRole"))if(!p||!p.match(/fixed|absolute|relative/))CSS.position="relative";$C.css(CSS);if($C.is(":visible")&&$C.innerHeight()<2)alert(lang.errContainerHeight.replace(/CONTAINER/,sC.ref))}}catch(ex){}$.extend(state.container,getElemDims($C))};var initHotkeys=function(){$.each(_c.borderPanes.split(","),function(i,pane){var o=options[pane];if(o.enableCursorHotkey||o.customHotkey){$(document).bind("keydown."+sID,keyDown);return false}})};var initOptions=function(){opts=
-_transformData(opts);var newOpts={applyDefaultStyles:"applyDemoStyles"};renameOpts(opts.defaults);$.each(_c.allPanes.split(","),function(i,pane){renameOpts(opts[pane])});if(opts.effects){$.extend(effects,opts.effects);delete opts.effects}$.extend(options.cookie,opts.cookie);var globals="name,zIndex,scrollToBookmarkOnLoad,resizeWithWindow,resizeWithWindowDelay,resizeWithWindowMaxDelay,"+"onresizeall,onresizeall_start,onresizeall_end,onload,onunload,autoBindCustomButtons,useStateCookie";$.each(globals.split(","),
-function(i,key){if(opts[key]!==undefined)options[key]=opts[key];else if(opts.defaults[key]!==undefined){options[key]=opts.defaults[key];delete opts.defaults[key]}});$.each("paneSelector,resizerCursor,customHotkey".split(","),function(i,key){delete opts.defaults[key]});$.extend(true,options.defaults,opts.defaults);_c.center=$.extend(true,{},_c.panes,_c.center);var z=options.zIndex;if(z===0||z>0){_c.zIndex.pane_normal=z;_c.zIndex.resizer_normal=z+1;_c.zIndex.iframe_mask=z+1}$.extend(options.center,
-opts.center);var o_Center=$.extend(true,{},options.defaults,opts.defaults,options.center);var optionsCenter=("paneClass,contentSelector,applyDemoStyles,triggerEventsOnLoad,showOverflowOnHover,"+"onresize,onresize_start,onresize_end,resizeNestedLayout,resizeContentWhileDragging,"+"onsizecontent,onsizecontent_start,onsizecontent_end").split(",");$.each(optionsCenter,function(i,key){options.center[key]=o_Center[key]});var o,defs=options.defaults;$.each(_c.borderPanes.split(","),function(i,pane){_c[pane]=
-$.extend(true,{},_c.panes,_c[pane]);o=options[pane]=$.extend(true,{},options.defaults,options[pane],opts.defaults,opts[pane]);if(!o.paneClass)o.paneClass="ui-layout-pane";if(!o.resizerClass)o.resizerClass="ui-layout-resizer";if(!o.togglerClass)o.togglerClass="ui-layout-toggler";$.each(["_open","_close",""],function(i,n){var sName="fxName"+n,sSpeed="fxSpeed"+n,sSettings="fxSettings"+n;o[sName]=opts[pane][sName]||opts[pane].fxName||opts.defaults[sName]||opts.defaults.fxName||o[sName]||o.fxName||defs[sName]||
-defs.fxName||"none";var fxName=o[sName];if(fxName=="none"||!$.effects||!$.effects[fxName]||!effects[fxName]&&!o[sSettings]&&!o.fxSettings)fxName=o[sName]="none";var fx=effects[fxName]||{},fx_all=fx.all||{},fx_pane=fx[pane]||{};o[sSettings]=$.extend({},fx_all,fx_pane,defs.fxSettings||{},defs[sSettings]||{},o.fxSettings,o[sSettings],opts.defaults.fxSettings,opts.defaults[sSettings]||{},opts[pane].fxSettings,opts[pane][sSettings]||{});o[sSpeed]=opts[pane][sSpeed]||opts[pane].fxSpeed||opts.defaults[sSpeed]||
-opts.defaults.fxSpeed||o[sSpeed]||o[sSettings].duration||o.fxSpeed||o.fxSettings.duration||defs.fxSpeed||defs.fxSettings.duration||fx_pane.duration||fx_all.duration||"normal"})});function renameOpts(O){for(var key in newOpts)if(O[key]!=undefined){O[newOpts[key]]=O[key];delete O[key]}}};var getPane=function(pane){var sel=options[pane].paneSelector;if(sel.substr(0,1)==="#")return $Container.find(sel).eq(0);else{var $P=$Container.children(sel).eq(0);return $P.length?$P:$Container.children("form:first").children(sel).eq(0)}};
-var initPanes=function(){$.each(_c.allPanes.split(","),function(idx,pane){var o=options[pane],s=state[pane],c=_c[pane],fx=s.fx,dir=c.dir,spacing=o.spacing_open||0,isCenter=pane=="center",CSS={},$P,$C,size,minSize,maxSize;$Cs[pane]=false;$P=$Ps[pane]=getPane(pane);if(!$P.length){$Ps[pane]=false;return true}if(!$P.data("layoutCSS")){var props="position,top,left,bottom,right,width,height,overflow,zIndex,display,backgroundColor,padding,margin,border";$P.data("layoutCSS",getElemCSS($P,props))}$P.data("layoutName",
-options.name).data("layoutRole","pane").data("layoutEdge",pane).css(c.cssReq).css("zIndex",_c.zIndex.pane_normal).css(o.applyDemoStyles?c.cssDemo:{}).addClass(o.paneClass+" "+o.paneClass+"-"+pane).bind("mouseenter."+sID,addHover).bind("mouseleave."+sID,removeHover);initContent(pane,false);if(!isCenter){size=s.size=_parseSize(pane,o.size);minSize=_parseSize(pane,o.minSize)||1;maxSize=_parseSize(pane,o.maxSize)||1E5;if(size>0)size=max(min(size,maxSize),minSize)}s.tagName=$P.attr("tagName");s.edge=pane;
-s.noRoom=false;s.isVisible=true;if(!isCenter){s.isClosed=false;s.isSliding=false;s.isResizing=false;s.isHidden=false}switch(pane){case "north":CSS.top=sC.insetTop;CSS.left=sC.insetLeft;CSS.right=sC.insetRight;break;case "south":CSS.bottom=sC.insetBottom;CSS.left=sC.insetLeft;CSS.right=sC.insetRight;break;case "west":CSS.left=sC.insetLeft;break;case "east":CSS.right=sC.insetRight;break;case "center":}if(dir=="horz")CSS.height=max(1,cssH(pane,size));else if(dir=="vert")CSS.width=max(1,cssW(pane,size));
-$P.css(CSS);if(dir!="horz")sizeMidPanes(pane,true);$P.css({visibility:"visible",display:"block"});if(o.initClosed&&o.closable)close(pane,true,true);else if(o.initHidden||o.initClosed)hide(pane);if(o.showOverflowOnHover)$P.hover(allowOverflow,resetOverflow)});initHandles();$.each(_c.borderPanes.split(","),function(i,pane){if($Ps[pane]&&state[pane].isVisible){setSizeLimits(pane);makePaneFit(pane)}});sizeMidPanes("center");$.each(_c.allPanes.split(","),function(i,pane){var o=options[pane];if($Ps[pane]&&
-o.triggerEventsOnLoad&&state[pane].isVisible)_execCallback(pane,o.onresize_end||o.onresize)});if($Container.innerHeight()<2)alert(lang.errContainerHeight.replace(/CONTAINER/,sC.ref))};var initHandles=function(panes){if(!panes||panes=="all")panes=_c.borderPanes;$.each(panes.split(","),function(i,pane){var $P=$Ps[pane];$Rs[pane]=false;$Ts[pane]=false;if(!$P)return;var o=options[pane],s=state[pane],c=_c[pane],rClass=o.resizerClass,tClass=o.togglerClass,side=c.side.toLowerCase(),spacing=s.isVisible?o.spacing_open:
-o.spacing_closed,_pane="-"+pane,_state=s.isVisible?"-open":"-closed",$R=$Rs[pane]=$("<div></div>"),$T=o.closable?$Ts[pane]=$("<div></div>"):false;if(!s.isVisible&&o.slidable)$R.attr("title",o.sliderTip).css("cursor",o.sliderCursor);$R.attr("id",o.paneSelector.substr(0,1)=="#"?o.paneSelector.substr(1)+"-resizer":"").data("layoutRole","resizer").data("layoutEdge",pane).css(_c.resizers.cssReq).css("zIndex",_c.zIndex.resizer_normal).css(o.applyDemoStyles?_c.resizers.cssDemo:{}).addClass(rClass+" "+rClass+
-_pane).appendTo($Container);if($T){$T.attr("id",o.paneSelector.substr(0,1)=="#"?o.paneSelector.substr(1)+"-toggler":"").data("layoutRole","toggler").data("layoutEdge",pane).css(_c.togglers.cssReq).css(o.applyDemoStyles?_c.togglers.cssDemo:{}).addClass(tClass+" "+tClass+_pane).appendTo($R).click(function(evt){toggle(pane);evt.stopPropagation()}).hover(addHover,removeHover);if(o.togglerContent_open)$("<span>"+o.togglerContent_open+"</span>").data("layoutRole","togglerContent").data("layoutEdge",pane).addClass("content content-open").css("display",
-"none").appendTo($T).hover(addHover,removeHover);if(o.togglerContent_closed)$("<span>"+o.togglerContent_closed+"</span>").data("layoutRole","togglerContent").data("layoutEdge",pane).addClass("content content-closed").css("display","none").appendTo($T).hover(addHover,removeHover)}initResizable(pane);if(s.isVisible)setAsOpen(pane);else{setAsClosed(pane);bindStartSlidingEvent(pane,true)}});sizeHandles("all")};var initContent=function(pane,resize){var o=options[pane],sel=o.contentSelector,$P=$Ps[pane],
-$C;if(sel)$C=$Cs[pane]=o.findNestedContent?$P.find(sel).eq(0):$P.children(sel).eq(0);if($C&&$C.length){$C.css(_c.content.cssReq);if(o.applyDemoStyles){$C.css(_c.content.cssDemo);$P.css(_c.content.cssDemoPane)}state[pane].content={};if(resize!==false)sizeContent(pane)}else $Cs[pane]=false};var initButtons=function(){var pre="ui-layout-button-",name;$.each("toggle,open,close,pin,toggle-slide,open-slide".split(","),function(i,action){$.each(_c.borderPanes.split(","),function(ii,pane){$("."+pre+action+
-"-"+pane).each(function(){name=$(this).data("layoutName")||$(this).attr("layoutName");if(name==undefined||name==options.name)bindButton(this,action,pane)})})})};var initResizable=function(panes){var draggingAvailable=typeof $.fn.draggable=="function",$Frames,side;if(!panes||panes=="all")panes=_c.borderPanes;$.each(panes.split(","),function(idx,pane){var o=options[pane],s=state[pane],c=_c[pane],side=c.dir=="horz"?"top":"left",r,live;if(!draggingAvailable||!$Ps[pane]||!o.resizable){o.resizable=false;
-return true}var $P=$Ps[pane],$R=$Rs[pane],base=o.resizerClass,resizerClass=base+"-drag",resizerPaneClass=base+"-"+pane+"-drag",helperClass=base+"-dragging",helperPaneClass=base+"-"+pane+"-dragging",helperLimitClass=base+"-dragging-limit",helperClassesSet=false;if(!s.isClosed)$R.attr("title",o.resizerTip).css("cursor",o.resizerCursor);$R.hover(onResizerEnter,onResizerLeave);$R.draggable({containment:$Container[0],axis:c.dir=="horz"?"y":"x",delay:0,distance:1,helper:"clone",opacity:o.resizerDragOpacity,
-addClasses:false,zIndex:_c.zIndex.resizer_drag,start:function(e,ui){o=options[pane];s=state[pane];live=o.resizeWhileDragging;if(false===_execCallback(pane,o.ondrag_start))return false;_c.isLayoutBusy=true;s.isResizing=true;timer.clear(pane+"_closeSlider");setSizeLimits(pane);r=s.resizerPosition;$R.addClass(resizerClass+" "+resizerPaneClass);helperClassesSet=false;$Frames=$(o.maskIframesOnResize===true?"iframe":o.maskIframesOnResize).filter(":visible");var id,i=0;$Frames.each(function(){id="ui-layout-mask-"+
-++i;$(this).data("layoutMaskID",id);$('<div id="'+id+'" class="ui-layout-mask ui-layout-mask-'+pane+'"/>').css({background:"#fff",opacity:"0.001",zIndex:_c.zIndex.iframe_mask,position:"absolute",width:this.offsetWidth+"px",height:this.offsetHeight+"px"}).css($(this).position()).appendTo(this.parentNode)});$("body").disableSelection()},drag:function(e,ui){if(!helperClassesSet){ui.helper.addClass(helperClass+" "+helperPaneClass).children().css("visibility","hidden");helperClassesSet=true;if(s.isSliding)$Ps[pane].css("zIndex",
-_c.zIndex.pane_sliding)}var limit=0;if(ui.position[side]<r.min){ui.position[side]=r.min;limit=-1}else if(ui.position[side]>r.max){ui.position[side]=r.max;limit=1}if(limit){ui.helper.addClass(helperLimitClass);window.defaultStatus="Panel has reached its "+(limit>0&&pane.match(/north|west/)||limit<0&&pane.match(/south|east/)?"maximum":"minimum")+" size"}else{ui.helper.removeClass(helperLimitClass);window.defaultStatus=""}if(live)resizePanes(e,ui,pane)},stop:function(e,ui){$("body").enableSelection();
-window.defaultStatus="";$R.removeClass(resizerClass+" "+resizerPaneClass+" "+helperLimitClass);s.isResizing=false;_c.isLayoutBusy=false;resizePanes(e,ui,pane,true)}});var resizePanes=function(evt,ui,pane,resizingDone){var dragPos=ui.position,c=_c[pane],resizerPos,newSize,i=0;switch(pane){case "north":resizerPos=dragPos.top;break;case "west":resizerPos=dragPos.left;break;case "south":resizerPos=sC.offsetHeight-dragPos.top-o.spacing_open;break;case "east":resizerPos=sC.offsetWidth-dragPos.left-o.spacing_open;
-break}if(resizingDone){$("div.ui-layout-mask").each(function(){this.parentNode.removeChild(this)});if(false===_execCallback(pane,o.ondrag_end||o.ondrag))return false}else $Frames.each(function(){$("#"+$(this).data("layoutMaskID")).css($(this).position()).css({width:this.offsetWidth+"px",height:this.offsetHeight+"px"})});newSize=resizerPos-sC["inset"+c.side];manualSizePane(pane,newSize)}})};var destroy=function(){$(window).unbind("."+sID);$(document).unbind("."+sID);window[sID]=null;var fullPage=sC.tagName==
-"BODY",_open="-open",_sliding="-sliding",_closed="-closed",$P,root,pRoot,pClasses;$.each(_c.allPanes.split(","),function(i,pane){$P=$Ps[pane];if(!$P)return true;if(pane!="center"){if($Ts[pane])$Ts[pane].remove();$Rs[pane].remove()}root=options[pane].paneClass;pRoot=root+"-"+pane;pClasses=[root,root+_open,root+_closed,root+_sliding,pRoot,pRoot+_open,pRoot+_closed,pRoot+_sliding];$.merge(pClasses,getHoverClasses($P,true));$P.removeClass(pClasses.join(" ")).removeData("layoutRole").removeData("layoutEdge").unbind("."+
-sID).unbind("mouseenter").unbind("mouseleave");if(!$P.data("layoutContainer"))$P.css($P.data("layoutCSS"))});$Container.removeData("layoutContainer");if(!$Container.data("layoutEdge"))$Container.css($Container.data("layoutCSS"));if(fullPage)$("html").css($("html").data("layoutCSS"));unload();var n=options.name;if(n&&window[n])window[n]=null};var hide=function(pane,noAnimation){var o=options[pane],s=state[pane],$P=$Ps[pane],$R=$Rs[pane];if(!$P||s.isHidden)return;if(state.initialized&&false===_execCallback(pane,
-o.onhide_start))return;s.isSliding=false;if($R)$R.hide();if(!state.initialized||s.isClosed){s.isClosed=true;s.isHidden=true;s.isVisible=false;$P.hide();sizeMidPanes(_c[pane].dir=="horz"?"all":"center");if(state.initialized||o.triggerEventsOnLoad)_execCallback(pane,o.onhide_end||o.onhide)}else{s.isHiding=true;close(pane,false,noAnimation)}};var show=function(pane,openPane,noAnimation,noAlert){var o=options[pane],s=state[pane],$P=$Ps[pane],$R=$Rs[pane];if(!$P||!s.isHidden)return;if(false===_execCallback(pane,
-o.onshow_start))return;s.isSliding=false;s.isShowing=true;if(openPane===false)close(pane,true);else open(pane,false,noAnimation,noAlert)};var toggle=function(pane,slide){if(!isStr(pane)){pane.stopImmediatePropagation();pane=$(this).data("layoutEdge")}var s=state[str(pane)];if(s.isHidden)show(pane);else if(s.isClosed)open(pane,!!slide);else close(pane)};var _closePane=function(pane,setHandles){var $P=$Ps[pane],s=state[pane];$P.hide();s.isClosed=true;s.isVisible=false};var close=function(pane,force,
-noAnimation,skipCallback){if(!state.initialized){_closePane(pane);return}var $P=$Ps[pane],$R=$Rs[pane],$T=$Ts[pane],o=options[pane],s=state[pane],doFX=!noAnimation&&!s.isClosed&&o.fxName_close!="none",isShowing=s.isShowing,isHiding=s.isHiding,wasSliding=s.isSliding;delete s.isShowing;delete s.isHiding;if(!$P||!o.closable)return;else if(!force&&s.isClosed&&!isShowing)return;if(_c.isLayoutBusy){_queue("close",pane,force);return}if(!isShowing&&false===_execCallback(pane,o.onclose_start))return;_c[pane].isMoving=
-true;_c.isLayoutBusy=true;s.isClosed=true;s.isVisible=false;if(isHiding)s.isHidden=true;else if(isShowing)s.isHidden=false;if(s.isSliding)bindStopSlidingEvents(pane,false);else sizeMidPanes(_c[pane].dir=="horz"?"all":"center",false);setAsClosed(pane);if(doFX){lockPaneForFX(pane,true);$P.hide(o.fxName_close,o.fxSettings_close,o.fxSpeed_close,function(){lockPaneForFX(pane,false);close_2()})}else{$P.hide();close_2()}function close_2(){if(s.isClosed){bindStartSlidingEvent(pane,true);var altPane=_c.altSide[pane];
-if(state[altPane].noRoom){setSizeLimits(altPane);makePaneFit(altPane)}if(!skipCallback&&(state.initialized||o.triggerEventsOnLoad)){if(!isShowing)_execCallback(pane,o.onclose_end||o.onclose);if(isShowing)_execCallback(pane,o.onshow_end||o.onshow);if(isHiding)_execCallback(pane,o.onhide_end||o.onhide)}}_dequeue(pane)}};var setAsClosed=function(pane){var $P=$Ps[pane],$R=$Rs[pane],$T=$Ts[pane],o=options[pane],s=state[pane],side=_c[pane].side.toLowerCase(),inset="inset"+_c[pane].side,rClass=o.resizerClass,
-tClass=o.togglerClass,_pane="-"+pane,_open="-open",_sliding="-sliding",_closed="-closed";$R.css(side,sC[inset]).removeClass(rClass+_open+" "+rClass+_pane+_open).removeClass(rClass+_sliding+" "+rClass+_pane+_sliding).addClass(rClass+_closed+" "+rClass+_pane+_closed).unbind("dblclick."+sID);if(o.resizable&&typeof $.fn.draggable=="function")$R.draggable("disable").removeClass("ui-state-disabled").css("cursor","default").attr("title","");if($T){$T.removeClass(tClass+_open+" "+tClass+_pane+_open).addClass(tClass+
-_closed+" "+tClass+_pane+_closed).attr("title",o.togglerTip_closed);$T.children(".content-open").hide();$T.children(".content-closed").css("display","block")}syncPinBtns(pane,false);if(state.initialized)sizeHandles("all")};var open=function(pane,slide,noAnimation,noAlert){var $P=$Ps[pane],$R=$Rs[pane],$T=$Ts[pane],o=options[pane],s=state[pane],doFX=!noAnimation&&s.isClosed&&o.fxName_open!="none",isShowing=s.isShowing;delete s.isShowing;if(!$P||!o.resizable&&!o.closable)return;else if(s.isVisible&&
-!s.isSliding)return;if(s.isHidden&&!isShowing){show(pane,true);return}if(_c.isLayoutBusy){_queue("open",pane,slide);return}if(false===_execCallback(pane,o.onopen_start))return;setSizeLimits(pane,slide);if(s.minSize>s.maxSize){syncPinBtns(pane,false);if(!noAlert&&o.noRoomToOpenTip)alert(o.noRoomToOpenTip);return}_c[pane].isMoving=true;_c.isLayoutBusy=true;if(slide)bindStopSlidingEvents(pane,true);else if(s.isSliding)bindStopSlidingEvents(pane,false);else if(o.slidable)bindStartSlidingEvent(pane,false);
-s.noRoom=false;makePaneFit(pane);s.isVisible=true;s.isClosed=false;if(isShowing)s.isHidden=false;if(doFX){lockPaneForFX(pane,true);$P.show(o.fxName_open,o.fxSettings_open,o.fxSpeed_open,function(){lockPaneForFX(pane,false);open_2()})}else{$P.show();open_2()}function open_2(){if(s.isVisible){_fixIframe(pane);if(!s.isSliding)sizeMidPanes(_c[pane].dir=="vert"?"center":"all",false);setAsOpen(pane)}_dequeue(pane)}};var setAsOpen=function(pane,skipCallback){var $P=$Ps[pane],$R=$Rs[pane],$T=$Ts[pane],o=
-options[pane],s=state[pane],side=_c[pane].side.toLowerCase(),inset="inset"+_c[pane].side,rClass=o.resizerClass,tClass=o.togglerClass,_pane="-"+pane,_open="-open",_closed="-closed",_sliding="-sliding";$R.css(side,sC[inset]+getPaneSize(pane)).removeClass(rClass+_closed+" "+rClass+_pane+_closed).addClass(rClass+_open+" "+rClass+_pane+_open);if(s.isSliding)$R.addClass(rClass+_sliding+" "+rClass+_pane+_sliding);else $R.removeClass(rClass+_sliding+" "+rClass+_pane+_sliding);if(o.resizerDblClickToggle)$R.bind("dblclick",
-toggle);removeHover(0,$R);if(o.resizable&&typeof $.fn.draggable=="function")$R.draggable("enable").css("cursor",o.resizerCursor).attr("title",o.resizerTip);else if(!s.isSliding)$R.css("cursor","default");if($T){$T.removeClass(tClass+_closed+" "+tClass+_pane+_closed).addClass(tClass+_open+" "+tClass+_pane+_open).attr("title",o.togglerTip_open);removeHover(0,$T);$T.children(".content-closed").hide();$T.children(".content-open").css("display","block")}syncPinBtns(pane,!s.isSliding);$.extend(s,getElemDims($P));
-if(state.initialized){sizeHandles("all");sizeContent(pane,true)}if(!skipCallback&&(state.initialized||o.triggerEventsOnLoad)&&$P.is(":visible")){_execCallback(pane,o.onopen_end||o.onopen);if(s.isShowing)_execCallback(pane,o.onshow_end||o.onshow);if(state.initialized){_execCallback(pane,o.onresize_end||o.onresize);resizeNestedLayout(pane)}}};var slideOpen=function(evt_or_pane){var type=typeof evt_or_pane,pane=type=="string"?evt_or_pane:$(this).data("layoutEdge");if(type=="object")evt_or_pane.stopImmediatePropagation();
-if(state[pane].isClosed)open(pane,true);else bindStopSlidingEvents(pane,true)};var slideClose=function(evt_or_pane){var $E=isStr(evt_or_pane)?$Ps[evt_or_pane]:$(this),pane=$E.data("layoutEdge"),o=options[pane],s=state[pane],$P=$Ps[pane];if(s.isClosed||s.isResizing)return;else if(o.slideTrigger_close=="click")close_NOW();else if(o.preventQuickSlideClose&&_c.isLayoutBusy)return;else timer.set(pane+"_closeSlider",close_NOW,300);function close_NOW(evt){if(s.isClosed)bindStopSlidingEvents(pane,false);
-else close(pane)}};var slideToggle=function(pane){toggle(pane,true)};var lockPaneForFX=function(pane,doLock){var $P=$Ps[pane];if(doLock){$P.css({zIndex:_c.zIndex.pane_animate});if(pane=="south")$P.css({top:sC.insetTop+sC.innerHeight-$P.outerHeight()});else if(pane=="east")$P.css({left:sC.insetLeft+sC.innerWidth-$P.outerWidth()})}else{$P.css({zIndex:state[pane].isSliding?_c.zIndex.pane_sliding:_c.zIndex.pane_normal});if(pane=="south")$P.css({top:"auto"});else if(pane=="east")$P.css({left:"auto"});
-var o=options[pane];if(state.browser.msie&&o.fxOpacityFix&&o.fxName_open!="slide"&&$P.css("filter")&&$P.css("opacity")==1)$P[0].style.removeAttribute("filter")}};var bindStartSlidingEvent=function(pane,enable){var o=options[pane],$P=$Ps[pane],$R=$Rs[pane],trigger=o.slideTrigger_open;if(!$R||!o.slidable)return;if(trigger.match(/mouseover/))trigger=o.slideTrigger_open="mouseenter";else if(!trigger.match(/click|dblclick|mouseenter/))trigger=o.slideTrigger_open="click";$R[enable?"bind":"unbind"](trigger+
-"."+sID,slideOpen).css("cursor",enable?o.sliderCursor:"default").attr("title",enable?o.sliderTip:"")};var bindStopSlidingEvents=function(pane,enable){var o=options[pane],s=state[pane],z=_c.zIndex,trigger=o.slideTrigger_close,action=enable?"bind":"unbind",$P=$Ps[pane],$R=$Rs[pane];s.isSliding=enable;timer.clear(pane+"_closeSlider");if(enable)bindStartSlidingEvent(pane,false);$P.css("zIndex",enable?z.pane_sliding:z.pane_normal);$R.css("zIndex",enable?z.pane_sliding:z.resizer_normal);if(!trigger.match(/click|mouseleave/))trigger=
-o.slideTrigger_close="mouseleave";$R[action](trigger,slideClose);if(trigger=="mouseleave"){$P[action]("mouseleave."+sID,slideClose);$R[action]("mouseenter."+sID,cancelMouseOut);$P[action]("mouseenter."+sID,cancelMouseOut)}if(!enable)timer.clear(pane+"_closeSlider");else if(trigger=="click"&&!o.resizable){$R.css("cursor",enable?o.sliderCursor:"default");$R.attr("title",enable?o.togglerTip_open:"")}function cancelMouseOut(evt){timer.clear(pane+"_closeSlider");evt.stopPropagation()}};var makePaneFit=
-function(pane,isOpening,skipCallback,force){var o=options[pane],s=state[pane],c=_c[pane],$P=$Ps[pane],$R=$Rs[pane],isSidePane=c.dir=="vert",hasRoom=false;if(pane=="center"||isSidePane&&s.noVerticalRoom){hasRoom=s.minHeight<=s.maxHeight&&(isSidePane||s.minWidth<=s.maxWidth);if(hasRoom&&s.noRoom){$P.show();if($R)$R.show();s.isVisible=true;s.noRoom=false;if(isSidePane)s.noVerticalRoom=false;_fixIframe(pane)}else if(!hasRoom&&!s.noRoom){$P.hide();if($R)$R.hide();s.isVisible=false;s.noRoom=true}}if(pane==
-"center");else if(s.minSize<=s.maxSize){hasRoom=true;if(s.size>s.maxSize)sizePane(pane,s.maxSize,skipCallback,force);else if(s.size<s.minSize)sizePane(pane,s.minSize,skipCallback,force);else if($R&&$P.is(":visible")){var side=c.side.toLowerCase(),pos=s.size+sC["inset"+c.side];if(_cssNum($R,side)!=pos)$R.css(side,pos)}if(s.noRoom)if(s.wasOpen&&o.closable)if(o.autoReopen)open(pane,false,true,true);else s.noRoom=false;else show(pane,s.wasOpen,true,true)}else if(!s.noRoom){s.noRoom=true;s.wasOpen=!s.isClosed&&
-!s.isSliding;if(o.closable)close(pane,true,true);else hide(pane,true)}};var manualSizePane=function(pane,size,skipCallback){var o=options[pane],forceResize=o.resizeWhileDragging&&!_c.isLayoutBusy;o.autoResize=false;sizePane(pane,size,skipCallback,forceResize)};var sizePane=function(pane,size,skipCallback,force){var o=options[pane],s=state[pane],$P=$Ps[pane],$R=$Rs[pane],side=_c[pane].side.toLowerCase(),inset="inset"+_c[pane].side,skipResizeWhileDragging=_c.isLayoutBusy&&!o.triggerEventsWhileDragging,
-oldSize;setSizeLimits(pane);oldSize=s.size;size=_parseSize(pane,size);size=max(size,_parseSize(pane,o.minSize));size=min(size,s.maxSize);if(size<s.minSize){makePaneFit(pane,false,skipCallback);return}if(!force&&size==oldSize)return;if(!skipCallback&&state.initialized&&s.isVisible)_execCallback(pane,o.onresize_start);$P.css(_c[pane].sizeType.toLowerCase(),max(1,cssSize(pane,size)));s.size=size;$.extend(s,getElemDims($P));if($R&&$P.is(":visible"))$R.css(side,size+sC[inset]);sizeContent(pane);if(!skipCallback&&
-!skipResizeWhileDragging&&state.initialized&&s.isVisible){_execCallback(pane,o.onresize_end||o.onresize);resizeNestedLayout(pane)}if(!skipCallback){if(!s.isSliding)sizeMidPanes(_c[pane].dir=="horz"?"all":"center",skipResizeWhileDragging,force);sizeHandles("all")}var altPane=_c.altSide[pane];if(size<oldSize&&state[altPane].noRoom){setSizeLimits(altPane);makePaneFit(altPane,false,skipCallback)}};var sizeMidPanes=function(panes,skipCallback,force){if(!panes||panes=="all")panes="east,west,center";$.each(panes.split(","),
-function(i,pane){if(!$Ps[pane])return;var o=options[pane],s=state[pane],$P=$Ps[pane],$R=$Rs[pane],isCenter=pane=="center",hasRoom=true,CSS={},d=calcNewCenterPaneDims();$.extend(s,getElemDims($P));if(pane=="center"){if(!force&&s.isVisible&&d.width==s.outerWidth&&d.height==s.outerHeight)return true;$.extend(s,cssMinDims(pane),{maxWidth:d.width,maxHeight:d.height});CSS=d;CSS.width=cssW(pane,d.width);CSS.height=cssH(pane,d.height);hasRoom=CSS.width>0&&CSS.height>0;if(!hasRoom&&!state.initialized&&o.minWidth>
-0){var reqPx=o.minWidth-s.outerWidth,minE=options.east.minSize||0,minW=options.west.minSize||0,sizeE=state.east.size,sizeW=state.west.size,newE=sizeE,newW=sizeW;if(reqPx>0&&state.east.isVisible&&sizeE>minE){newE=max(sizeE-minE,sizeE-reqPx);reqPx-=sizeE-newE}if(reqPx>0&&state.west.isVisible&&sizeW>minW){newW=max(sizeW-minW,sizeW-reqPx);reqPx-=sizeW-newW}if(reqPx==0){if(sizeE!=minE)sizePane("east",newE,true);if(sizeW!=minW)sizePane("west",newW,true);sizeMidPanes("center",skipCallback,force);return}}}else{$.extend(s,
-getElemDims($P),cssMinDims(pane));if(!force&&!s.noVerticalRoom&&d.height==s.outerHeight)return true;CSS.top=d.top;CSS.bottom=d.bottom;CSS.height=cssH(pane,d.height);s.maxHeight=max(0,CSS.height);hasRoom=s.maxHeight>0;if(!hasRoom)s.noVerticalRoom=true}if(hasRoom){if(!skipCallback&&state.initialized)_execCallback(pane,o.onresize_start);$P.css(CSS);$.extend(s,getElemDims($P));if(s.noRoom)makePaneFit(pane);if(state.initialized)sizeContent(pane)}else if(!s.noRoom&&s.isVisible)makePaneFit(pane);if(pane==
-"center"){var b=state.browser;var fix=b.isIE6||b.msie&&!b.boxModel;if($Ps.north&&(fix||state.north.tagName=="IFRAME"))$Ps.north.css("width",cssW($Ps.north,sC.innerWidth));if($Ps.south&&(fix||state.south.tagName=="IFRAME"))$Ps.south.css("width",cssW($Ps.south,sC.innerWidth))}if(!skipCallback&&state.initialized&&s.isVisible){_execCallback(pane,o.onresize_end||o.onresize);resizeNestedLayout(pane)}})};var resizeAll=function(){var oldW=sC.innerWidth,oldH=sC.innerHeight;$.extend(state.container,getElemDims($Container));
-if(!sC.outerHeight)return;if(false===_execCallback(null,options.onresizeall_start))return false;var shrunkH=sC.innerHeight<oldH,shrunkW=sC.innerWidth<oldW,$P,o,s,dir;$.each(["south","north","east","west"],function(i,pane){if(!$Ps[pane])return;s=state[pane];o=options[pane];dir=_c[pane].dir;if(o.autoResize&&s.size!=o.size)sizePane(pane,o.size,true,true);else{setSizeLimits(pane);makePaneFit(pane,false,true,true)}});sizeMidPanes("all",true,true);sizeHandles("all");o=options;$.each(_c.allPanes.split(","),
-function(i,pane){$P=$Ps[pane];if(!$P)return;if(state[pane].isVisible)_execCallback(pane,o[pane].onresize_end||o[pane].onresize);resizeNestedLayout(pane)});_execCallback(null,o.onresizeall_end||o.onresizeall)};var resizeNestedLayout=function(pane){var $P=$Ps[pane],$C=$Cs[pane],d="layoutContainer";if(options[pane].resizeNestedLayout)if($P.data(d))$P.layout().resizeAll();else if($C&&$C.data(d))$C.layout().resizeAll()};var sizeContent=function(panes,remeasure){if(!panes||panes=="all")panes=_c.allPanes;
-$.each(panes.split(","),function(idx,pane){var $P=$Ps[pane],$C=$Cs[pane],o=options[pane],s=state[pane],m=s.content;if(!$P||!$C||!$P.is(":visible"))return true;if(false===_execCallback(null,o.onsizecontent_start))return;if(!_c.isLayoutBusy||m.top==undefined||remeasure||o.resizeContentWhileDragging){_measure();if(m.hiddenFooters>0&&$P.css("overflow")=="hidden"){$P.css("overflow","visible");_measure();$P.css("overflow","hidden")}}var newH=s.innerHeight-(m.spaceAbove-s.css.paddingTop)-(m.spaceBelow-s.css.paddingBottom);
-if(!$C.is(":visible")||m.height!=newH){setOuterHeight($C,newH,true);m.height=newH}if(state.initialized){_execCallback(pane,o.onsizecontent_end||o.onsizecontent);resizeNestedLayout(pane)}function _below($E){return max(s.css.paddingBottom,parseInt($E.css("marginBottom"),10)||0)}function _measure(){var ignore=options[pane].contentIgnoreSelector,$Fs=$C.nextAll().not(ignore||":lt(0)"),$Fs_vis=$Fs.filter(":visible"),$F=$Fs_vis.filter(":last");m={top:$C[0].offsetTop,height:$C.outerHeight(),numFooters:$Fs.length,
-hiddenFooters:$Fs.length-$Fs_vis.length,spaceBelow:0};m.spaceAbove=m.top;m.bottom=m.top+m.height;if($F.length)m.spaceBelow=$F[0].offsetTop+$F.outerHeight()-m.bottom+_below($F);else m.spaceBelow=_below($C)}})};var sizeHandles=function(panes){if(!panes||panes=="all")panes=_c.borderPanes;$.each(panes.split(","),function(i,pane){var o=options[pane],s=state[pane],$P=$Ps[pane],$R=$Rs[pane],$T=$Ts[pane],$TC;if(!$P||!$R)return;var dir=_c[pane].dir,_state=s.isClosed?"_closed":"_open",spacing=o["spacing"+_state],
-togAlign=o["togglerAlign"+_state],togLen=o["togglerLength"+_state],paneLen,offset,CSS={};if(spacing==0){$R.hide();return}else if(!s.noRoom&&!s.isHidden)$R.show();if(dir=="horz"){paneLen=$P.outerWidth();s.resizerLength=paneLen;$R.css({width:max(1,cssW($R,paneLen)),height:max(0,cssH($R,spacing)),left:_cssNum($P,"left")})}else{paneLen=$P.outerHeight();s.resizerLength=paneLen;$R.css({height:max(1,cssH($R,paneLen)),width:max(0,cssW($R,spacing)),top:sC.insetTop+getPaneSize("north",true)})}removeHover(o,
-$R);if($T){if(togLen==0||s.isSliding&&o.hideTogglerOnSlide){$T.hide();return}else $T.show();if(!(togLen>0)||togLen=="100%"||togLen>paneLen){togLen=paneLen;offset=0}else if(isStr(togAlign))switch(togAlign){case "top":case "left":offset=0;break;case "bottom":case "right":offset=paneLen-togLen;break;case "middle":case "center":default:offset=Math.floor((paneLen-togLen)/2)}else{var x=parseInt(togAlign,10);if(togAlign>=0)offset=x;else offset=paneLen-togLen+x}if(dir=="horz"){var width=cssW($T,togLen);$T.css({width:max(0,
-width),height:max(1,cssH($T,spacing)),left:offset,top:0});$T.children(".content").each(function(){$TC=$(this);$TC.css("marginLeft",Math.floor((width-$TC.outerWidth())/2))})}else{var height=cssH($T,togLen);$T.css({height:max(0,height),width:max(1,cssW($T,spacing)),top:offset,left:0});$T.children(".content").each(function(){$TC=$(this);$TC.css("marginTop",Math.floor((height-$TC.outerHeight())/2))})}removeHover(0,$T)}if(!state.initialized&&o.initHidden){$R.hide();if($T)$T.hide()}})};var swapPanes=function(pane1,
-pane2){state[pane1].edge=pane2;state[pane2].edge=pane1;var cancelled=false;if(false===_execCallback(pane1,options[pane1].onswap_start))cancelled=true;if(!cancelled&&false===_execCallback(pane2,options[pane2].onswap_start))cancelled=true;if(cancelled){state[pane1].edge=pane1;state[pane2].edge=pane2;return}var oPane1=copy(pane1),oPane2=copy(pane2),sizes={};sizes[pane1]=oPane1?oPane1.state.size:0;sizes[pane2]=oPane2?oPane2.state.size:0;$Ps[pane1]=false;$Ps[pane2]=false;state[pane1]={};state[pane2]={};
-if($Ts[pane1])$Ts[pane1].remove();if($Ts[pane2])$Ts[pane2].remove();if($Rs[pane1])$Rs[pane1].remove();if($Rs[pane2])$Rs[pane2].remove();$Rs[pane1]=$Rs[pane2]=$Ts[pane1]=$Ts[pane2]=false;move(oPane1,pane2);move(oPane2,pane1);oPane1=oPane2=sizes=null;if($Ps[pane1])$Ps[pane1].css(_c.visible);if($Ps[pane2])$Ps[pane2].css(_c.visible);resizeAll();_execCallback(pane1,options[pane1].onswap_end||options[pane1].onswap);_execCallback(pane2,options[pane2].onswap_end||options[pane2].onswap);return;function copy(n){var $P=
-$Ps[n],$C=$Cs[n];return!$P?false:{pane:n,P:$P?$P[0]:false,C:$C?$C[0]:false,state:$.extend({},state[n]),options:$.extend({},options[n])}}function move(oPane,pane){if(!oPane)return;var P=oPane.P,C=oPane.C,oldPane=oPane.pane,c=_c[pane],side=c.side.toLowerCase(),inset="inset"+c.side,s=$.extend({},state[pane]),o=options[pane],fx={resizerCursor:o.resizerCursor},re,size,pos;$.each("fxName,fxSpeed,fxSettings".split(","),function(i,k){fx[k]=o[k];fx[k+"_open"]=o[k+"_open"];fx[k+"_close"]=o[k+"_close"]});$Ps[pane]=
-$(P).data("layoutEdge",pane).css(_c.hidden).css(c.cssReq);$Cs[pane]=C?$(C):false;options[pane]=$.extend({},oPane.options,fx);state[pane]=$.extend({},oPane.state);re=new RegExp(o.paneClass+"-"+oldPane,"g");P.className=P.className.replace(re,o.paneClass+"-"+pane);initHandles(pane);if(c.dir!=_c[oldPane].dir){size=sizes[pane]||0;setSizeLimits(pane);size=max(size,state[pane].minSize);manualSizePane(pane,size,true)}else $Rs[pane].css(side,sC[inset]+(state[pane].isVisible?getPaneSize(pane):0));if(oPane.state.isVisible&&
-!s.isVisible)setAsOpen(pane,true);else{setAsClosed(pane);bindStartSlidingEvent(pane,true)}oPane=null}};function keyDown(evt){if(!evt)return true;var code=evt.keyCode;if(code<33)return true;var PANE={38:"north",40:"south",37:"west",39:"east"},ALT=evt.altKey,SHIFT=evt.shiftKey,CTRL=evt.ctrlKey,CURSOR=CTRL&&code>=37&&code<=40,o,k,m,pane;if(CURSOR&&options[PANE[code]].enableCursorHotkey)pane=PANE[code];else if(CTRL||SHIFT)$.each(_c.borderPanes.split(","),function(i,p){o=options[p];k=o.customHotkey;m=
-o.customHotkeyModifier;if(SHIFT&&m=="SHIFT"||CTRL&&m=="CTRL"||CTRL&&SHIFT)if(k&&code==(isNaN(k)||k<=9?k.toUpperCase().charCodeAt(0):k)){pane=p;return false}});if(!pane||!$Ps[pane]||!options[pane].closable||state[pane].isHidden)return true;toggle(pane);evt.stopPropagation();evt.returnValue=false;return false}function allowOverflow(el){if(this&&this.tagName)el=this;var $P;if(isStr(el))$P=$Ps[el];else if($(el).data("layoutRole"))$P=$(el);else $(el).parents().each(function(){if($(this).data("layoutRole")){$P=
-$(this);return false}});if(!$P||!$P.length)return;var pane=$P.data("layoutEdge"),s=state[pane];if(s.cssSaved)resetOverflow(pane);if(s.isSliding||s.isResizing||s.isClosed){s.cssSaved=false;return}var newCSS={zIndex:_c.zIndex.pane_normal+2},curCSS={},of=$P.css("overflow"),ofX=$P.css("overflowX"),ofY=$P.css("overflowY");if(of!="visible"){curCSS.overflow=of;newCSS.overflow="visible"}if(ofX&&!ofX.match(/visible|auto/)){curCSS.overflowX=ofX;newCSS.overflowX="visible"}if(ofY&&!ofY.match(/visible|auto/)){curCSS.overflowY=
-ofX;newCSS.overflowY="visible"}s.cssSaved=curCSS;$P.css(newCSS);$.each(_c.allPanes.split(","),function(i,p){if(p!=pane)resetOverflow(p)})}function resetOverflow(el){if(this&&this.tagName)el=this;var $P;if(isStr(el))$P=$Ps[el];else if($(el).data("layoutRole"))$P=$(el);else $(el).parents().each(function(){if($(this).data("layoutRole")){$P=$(this);return false}});if(!$P||!$P.length)return;var pane=$P.data("layoutEdge"),s=state[pane],CSS=s.cssSaved||{};if(!s.isSliding&&!s.isResizing)$P.css("zIndex",_c.zIndex.pane_normal);
-$P.css(CSS);s.cssSaved=false}function getBtn(selector,pane,action){var $E=$(selector);if(!$E.length)alert(lang.errButton+lang.selector+": "+selector);else if(_c.borderPanes.indexOf(pane)==-1)alert(lang.errButton+lang.Pane.toLowerCase()+": "+pane);else{var btn=options[pane].buttonClass+"-"+action;$E.addClass(btn+" "+btn+"-"+pane).data("layoutName",options.name);return $E}return null}function bindButton(selector,action,pane){switch(action.toLowerCase()){case "toggle":addToggleBtn(selector,pane);break;
-case "open":addOpenBtn(selector,pane);break;case "close":addCloseBtn(selector,pane);break;case "pin":addPinBtn(selector,pane);break;case "toggle-slide":addToggleBtn(selector,pane,true);break;case "open-slide":addOpenBtn(selector,pane,true);break}}function addToggleBtn(selector,pane,slide){var $E=getBtn(selector,pane,"toggle");if($E)$E.click(function(evt){toggle(pane,!!slide);evt.stopPropagation()})}function addOpenBtn(selector,pane,slide){var $E=getBtn(selector,pane,"open");if($E)$E.attr("title",
-lang.Open).click(function(evt){open(pane,!!slide);evt.stopPropagation()})}function addCloseBtn(selector,pane){var $E=getBtn(selector,pane,"close");if($E)$E.attr("title",lang.Close).click(function(evt){close(pane);evt.stopPropagation()})}function addPinBtn(selector,pane){var $E=getBtn(selector,pane,"pin");if($E){var s=state[pane];$E.click(function(evt){setPinState($(this),pane,s.isSliding||s.isClosed);if(s.isSliding||s.isClosed)open(pane);else close(pane);evt.stopPropagation()});setPinState($E,pane,
-!s.isClosed&&!s.isSliding);_c[pane].pins.push(selector)}}function syncPinBtns(pane,doPin){$.each(_c[pane].pins,function(i,selector){setPinState($(selector),pane,doPin)})}function setPinState($Pin,pane,doPin){var updown=$Pin.attr("pin");if(updown&&doPin==(updown=="down"))return;var pin=options[pane].buttonClass+"-pin",side=pin+"-"+pane,UP=pin+"-up "+side+"-up",DN=pin+"-down "+side+"-down";$Pin.attr("pin",doPin?"down":"up").attr("title",doPin?lang.Unpin:lang.Pin).removeClass(doPin?UP:DN).addClass(doPin?
-DN:UP)}function isCookiesEnabled(){return navigator.cookieEnabled!=0}function getCookie(opts){var o=$.extend({},options.cookie,opts||{}),name=o.name||options.name||"Layout",c=document.cookie,cs=c?c.split(";"):[],pair;for(var i=0,n=cs.length;i<n;i++){pair=$.trim(cs[i]).split("=");if(pair[0]==name)return decodeJSON(decodeURIComponent(pair[1]))}return""}function saveCookie(keys,opts){var o=$.extend({},options.cookie,opts||{}),name=o.name||options.name||"Layout",params="",date="",clear=false;if(o.expires.toUTCString)date=
-o.expires;else if(typeof o.expires=="number"){date=new Date;if(o.expires>0)date.setDate(date.getDate()+o.expires);else{date.setYear(1970);clear=true}}if(date)params+=";expires="+date.toUTCString();if(o.path)params+=";path="+o.path;if(o.domain)params+=";domain="+o.domain;if(o.secure)params+=";secure";if(clear){state.cookie={};document.cookie=name+"="+params}else{state.cookie=getState(keys||o.keys);document.cookie=name+"="+encodeURIComponent(encodeJSON(state.cookie))+params}return $.extend({},state.cookie)}
-function deleteCookie(){saveCookie("",{expires:-1})}function loadCookie(opts){var o=getCookie(opts);if(o){state.cookie=$.extend({},o);loadState(o)}return o}function loadState(opts){$.extend(true,options,opts)}function getState(keys){var data={},alt={isClosed:"initClosed",isHidden:"initHidden"},pair,pane,key,val;if(!keys)keys=options.cookie.keys;if($.isArray(keys))keys=keys.join(",");keys=keys.replace(/__/g,".").split(",");for(var i=0,n=keys.length;i<n;i++){pair=keys[i].split(".");pane=pair[0];key=
-pair[1];if(_c.allPanes.indexOf(pane)<0)continue;val=state[pane][key];if(val==undefined)continue;if(key=="isClosed"&&state[pane]["isSliding"])val=true;(data[pane]||(data[pane]={}))[alt[key]?alt[key]:key]=val}return data}function encodeJSON(JSON){return parse(JSON);function parse(h){var D=[],i=0,k,v,t;for(k in h){v=h[k];t=typeof v;if(t=="string")v='"'+v+'"';else if(t=="object")v=parse(v);D[i++]='"'+k+'":'+v}return"{"+D.join(",")+"}"}}function decodeJSON(str){try{return window["eval"]("("+str+")")||
-{}}catch(e){return{}}}var $Container=$(this).eq(0);if(!$Container.length)return null;if($Container.data("layoutContainer"))return $.extend({},window[$Container.data("layoutContainer")]);var $Ps={},$Cs={},$Rs={},$Ts={},sC=state.container,sID=state.id;_create();var Instance={options:options,state:state,container:$Container,panes:$Ps,contents:$Cs,resizers:$Rs,togglers:$Ts,toggle:toggle,hide:hide,show:show,open:open,close:close,slideOpen:slideOpen,slideClose:slideClose,slideToggle:slideToggle,initContent:initContent,
-sizeContent:sizeContent,sizePane:manualSizePane,swapPanes:swapPanes,resizeAll:resizeAll,destroy:destroy,setSizeLimits:setSizeLimits,bindButton:bindButton,addToggleBtn:addToggleBtn,addOpenBtn:addOpenBtn,addCloseBtn:addCloseBtn,addPinBtn:addPinBtn,allowOverflow:allowOverflow,resetOverflow:resetOverflow,encodeJSON:encodeJSON,decodeJSON:decodeJSON,getState:getState,getCookie:getCookie,saveCookie:saveCookie,deleteCookie:deleteCookie,loadCookie:loadCookie,loadState:loadState,cssWidth:cssW,cssHeight:cssH};
-window[sID]=Instance;return Instance}})(jQuery);
+	// DEFAULTS for options
+	var 
+		prefix = "ui-layout-" // prefix for ALL selectors and classNames
+	,	defaults = { //	misc default values
+			paneClass:				prefix+"pane"		// ui-layout-pane
+		,	resizerClass:			prefix+"resizer"	// ui-layout-resizer
+		,	togglerClass:			prefix+"toggler"	// ui-layout-toggler
+		,	togglerInnerClass:		prefix+""			// ui-layout-open / ui-layout-closed
+		,	buttonClass:			prefix+"button"		// ui-layout-button
+		,	contentSelector:		"."+prefix+"content"// ui-layout-content
+		,	contentIgnoreSelector:	"."+prefix+"ignore"	// ui-layout-mask 
+		}
+	;
+
+	// DEFAULT PANEL OPTIONS - CHANGE IF DESIRED
+	var options = {
+		name:						""			// FUTURE REFERENCE - not used right now
+	,	scrollToBookmarkOnLoad:		true		// after creating a layout, scroll to bookmark in URL (.../page.htm#myBookmark)
+	,	defaults: { // default options for 'all panes' - will be overridden by 'per-pane settings'
+			applyDefaultStyles: 	false		// apply basic styles directly to resizers & buttons? If not, then stylesheet must handle it
+		,	closable:				true		// pane can open & close
+		,	resizable:				true		// when open, pane can be resized 
+		,	slidable:				true		// when closed, pane can 'slide' open over other panes - closes on mouse-out
+		//,	paneSelector:			[ ]			// MUST be pane-specific!
+		,	contentSelector:		defaults.contentSelector	// INNER div/element to auto-size so only it scrolls, not the entire pane!
+		,	contentIgnoreSelector:	defaults.contentIgnoreSelector	// elem(s) to 'ignore' when measuring 'content'
+		,	paneClass:				defaults.paneClass		// border-Pane - default: 'ui-layout-pane'
+		,	resizerClass:			defaults.resizerClass	// Resizer Bar		- default: 'ui-layout-resizer'
+		,	togglerClass:			defaults.togglerClass	// Toggler Button	- default: 'ui-layout-toggler'
+		,	buttonClass:			defaults.buttonClass	// CUSTOM Buttons	- default: 'ui-layout-button-toggle/-open/-close/-pin'
+		,	resizerDragOpacity:		1			// option for ui.draggable
+		//,	resizerCursor:			""			// MUST be pane-specific - cursor when over resizer-bar
+		,	maskIframesOnResize:	true		// true = all iframes OR = iframe-selector(s) - adds masking-div during resizing/dragging
+		//,	size:					100			// inital size of pane - defaults are set 'per pane'
+		,	minSize:				0			// when manually resizing a pane
+		,	maxSize:				0			// ditto, 0 = no limit
+		,	spacing_open:			6			// space between pane and adjacent panes - when pane is 'open'
+		,	spacing_closed:			6			// ditto - when pane is 'closed'
+		,	togglerLength_open:		50			// Length = WIDTH of toggler button on north/south edges - HEIGHT on east/west edges
+		,	togglerLength_closed: 	50			// 100% OR -1 means 'full height/width of resizer bar' - 0 means 'hidden'
+		,	togglerAlign_open:		"center"	// top/left, bottom/right, center, OR...
+		,	togglerAlign_closed:	"center"	// 1 => nn = offset from top/left, -1 => -nn == offset from bottom/right
+		,	togglerTip_open:		"Close"		// Toggler tool-tip (title)
+		,	togglerTip_closed:		"Open"		// ditto
+		,	resizerTip:				"Resize"	// Resizer tool-tip (title)
+		,	sliderTip:				"Slide Open" // resizer-bar triggers 'sliding' when pane is closed
+		,	sliderCursor:			"pointer"	// cursor when resizer-bar will trigger 'sliding'
+		,	slideTrigger_open:		"click"		// click, dblclick, mouseover
+		,	slideTrigger_close:		"mouseout"	// click, mouseout
+		,	hideTogglerOnSlide:		false		// when pane is slid-open, should the toggler show?
+		,	togglerContent_open:	""			// text or HTML to put INSIDE the toggler
+		,	togglerContent_closed:	""			// ditto
+		,	showOverflowOnHover:	false		// will bind allowOverflow() utility to pane.onMouseOver
+		,	enableCursorHotkey:		true		// enabled 'cursor' hotkeys
+		//,	customHotkey:			""			// MUST be pane-specific - EITHER a charCode OR a character
+		,	customHotkeyModifier:	"SHIFT"		// either 'SHIFT', 'CTRL' or 'CTRL+SHIFT' - NOT 'ALT'
+		//	NOTE: fxSss_open & fxSss_close options (eg: fxName_open) are auto-generated if not passed
+		,	fxName:					"slide" 	// ('none' or blank), slide, drop, scale
+		,	fxSpeed:				null		// slow, normal, fast, 200, nnn - if passed, will OVERRIDE fxSettings.duration
+		,	fxSettings:				{}			// can be passed, eg: { easing: "easeOutBounce", duration: 1500 }
+		,	initClosed:				false		// true = init pane as 'closed'
+		,	initHidden: 			false 		// true = init pane as 'hidden' - no resizer or spacing
+		
+		/*	callback options do not have to be set - listed here for reference only
+		,	onshow_start:			""			// CALLBACK when pane STARTS to Show	- BEFORE onopen/onhide_start
+		,	onshow_end:				""			// CALLBACK when pane ENDS being Shown	- AFTER  onopen/onhide_end
+		,	onhide_start:			""			// CALLBACK when pane STARTS to Close	- BEFORE onclose_start
+		,	onhide_end:				""			// CALLBACK when pane ENDS being Closed	- AFTER  onclose_end
+		,	onopen_start:			""			// CALLBACK when pane STARTS to Open
+		,	onopen_end:				""			// CALLBACK when pane ENDS being Opened
+		,	onclose_start:			""			// CALLBACK when pane STARTS to Close
+		,	onclose_end:			""			// CALLBACK when pane ENDS being Closed
+		,	onresize_start:			""			// CALLBACK when pane STARTS to be ***MANUALLY*** Resized
+		,	onresize_end:			""			// CALLBACK when pane ENDS being Resized ***FOR ANY REASON***
+		*/
+		}
+	,	north: {
+			paneSelector:			"."+prefix+"north" // default = .ui-layout-north
+		,	size:					"auto"
+		,	resizerCursor:			"n-resize"
+		}
+	,	south: {
+			paneSelector:			"."+prefix+"south" // default = .ui-layout-south
+		,	size:					"auto"
+		,	resizerCursor:			"s-resize"
+		}
+	,	east: {
+			paneSelector:			"."+prefix+"east" // default = .ui-layout-east
+		,	size:					200
+		,	resizerCursor:			"e-resize"
+		}
+	,	west: {
+			paneSelector:			"."+prefix+"west" // default = .ui-layout-west
+		,	size:					200
+		,	resizerCursor:			"w-resize"
+		}
+	,	center: {
+			paneSelector:			"."+prefix+"center" // default = .ui-layout-center
+		}
+
+	};
+
+
+	var effects = { // LIST *PREDEFINED EFFECTS* HERE, even if effect has no settings
+		slide:	{
+			all:	{ duration:  "fast"	} // eg: duration: 1000, easing: "easeOutBounce"
+		,	north:	{ direction: "up"	}
+		,	south:	{ direction: "down"	}
+		,	east:	{ direction: "right"}
+		,	west:	{ direction: "left"	}
+		}
+	,	drop:	{
+			all:	{ duration:  "slow"	} // eg: duration: 1000, easing: "easeOutQuint"
+		,	north:	{ direction: "up"	}
+		,	south:	{ direction: "down"	}
+		,	east:	{ direction: "right"}
+		,	west:	{ direction: "left"	}
+		}
+	,	scale:	{
+			all:	{ duration:  "fast"	}
+		}
+	};
+
+
+	// STATIC, INTERNAL CONFIG - DO NOT CHANGE THIS!
+	var config = {
+		allPanes:		"north,south,east,west,center"
+	,	borderPanes:	"north,south,east,west"
+	,	zIndex: { // set z-index values here
+			resizer_normal:	1		// normal z-index for resizer-bars
+		,	pane_normal:	2		// normal z-index for panes
+		,	mask:			4		// overlay div used to mask pane(s) during resizing
+		,	sliding:		100		// applied to both the pane and its resizer when a pane is 'slid open'
+		,	resizing:		10000	// applied to the CLONED resizer-bar when being 'dragged'
+		,	animation:		10000	// applied to the pane when being animated - not applied to the resizer
+		}
+	,	resizers: {
+			cssReq: {
+				position: 	"absolute"
+			,	padding: 	0
+			,	margin: 	0
+			,	fontSize:	"1px"
+			,	textAlign:	"left" // to counter-act "center" alignment!
+			,	overflow: 	"hidden" // keep toggler button from overflowing
+			,	zIndex: 	1
+			}
+		,	cssDef: { // DEFAULT CSS - applied if: options.PANE.applyDefaultStyles=true
+				background: "#DDD"
+			,	border:		"none"
+			}
+		}
+	,	togglers: {
+			cssReq: {
+				position: 	"absolute"
+			,	display: 	"block"
+			,	padding: 	0
+			,	margin: 	0
+			,	overflow:	"hidden"
+			,	textAlign:	"center"
+			,	fontSize:	"1px"
+			,	cursor: 	"pointer"
+			,	zIndex: 	1
+			}
+		,	cssDef: { // DEFAULT CSS - applied if: options.PANE.applyDefaultStyles=true
+				background: "#AAA"
+			}
+		}
+	,	content: {
+			cssReq: {
+				overflow:	"auto"
+			}
+		,	cssDef: {}
+		}
+	,	defaults: { // defaults for ALL panes - overridden by 'per-pane settings' below
+			cssReq: {
+				position: 	"absolute"
+			,	margin:		0
+			,	zIndex: 	2
+			}
+		,	cssDef: {
+				padding:	"10px"
+			,	background:	"#FFF"
+			,	border:		"1px solid #BBB"
+			,	overflow:	"auto"
+			}
+		}
+	,	north: {
+			edge:			"top"
+		,	sizeType:		"height"
+		,	dir:			"horz"
+		,	cssReq: {
+				top: 		0
+			,	bottom: 	"auto"
+			,	left: 		0
+			,	right: 		0
+			,	width: 		"auto"
+			//	height: 	DYNAMIC
+			}
+		}
+	,	south: {
+			edge:			"bottom"
+		,	sizeType:		"height"
+		,	dir:			"horz"
+		,	cssReq: {
+				top: 		"auto"
+			,	bottom: 	0
+			,	left: 		0
+			,	right: 		0
+			,	width: 		"auto"
+			//	height: 	DYNAMIC
+			}
+		}
+	,	east: {
+			edge:			"right"
+		,	sizeType:		"width"
+		,	dir:			"vert"
+		,	cssReq: {
+				left: 		"auto"
+			,	right: 		0
+			,	top: 		"auto" // DYNAMIC
+			,	bottom: 	"auto" // DYNAMIC
+			,	height: 	"auto"
+			//	width: 		DYNAMIC
+			}
+		}
+	,	west: {
+			edge:			"left"
+		,	sizeType:		"width"
+		,	dir:			"vert"
+		,	cssReq: {
+				left: 		0
+			,	right: 		"auto"
+			,	top: 		"auto" // DYNAMIC
+			,	bottom: 	"auto" // DYNAMIC
+			,	height: 	"auto"
+			//	width: 		DYNAMIC
+			}
+		}
+	,	center: {
+			dir:			"center"
+		,	cssReq: {
+				left: 		"auto" // DYNAMIC
+			,	right: 		"auto" // DYNAMIC
+			,	top: 		"auto" // DYNAMIC
+			,	bottom: 	"auto" // DYNAMIC
+			,	height: 	"auto"
+			,	width: 		"auto"
+			}
+		}
+	};
+
+
+	// DYNAMIC DATA
+	var state = {
+		// generate random 'ID#' to identify layout - used to create global namespace for timers
+		id:			Math.floor(Math.random() * 10000)
+	,	container:	{}
+	,	north:		{}
+	,	south:		{}
+	,	east:		{}
+	,	west:		{}
+	,	center:		{}
+	};
+
+
+	var 
+		altEdge = {
+			top:	"bottom"
+		,	bottom: "top"
+		,	left:	"right"
+		,	right:	"left"
+		}
+	,	altSide = {
+			north:	"south"
+		,	south:	"north"
+		,	east: 	"west"
+		,	west: 	"east"
+		}
+	;
+
+
+/*
+ * ###########################
+ *  INTERNAL HELPER FUNCTIONS
+ * ###########################
+ */
+
+	/**
+	 * isStr
+	 *
+	 * Returns true if passed param is EITHER a simple string OR a 'string object' - otherwise returns false
+	 */
+	var isStr = function (o) {
+		if (typeof o == "string")
+			return true;
+		else if (typeof o == "object") {
+			try {
+				var match = o.constructor.toString().match(/string/i); 
+				return (match !== null);
+			} catch (e) {} 
+		}
+		return false;
+	};
+
+	/**
+	 * str
+	 *
+	 * Returns a simple string if the passed param is EITHER a simple string OR a 'string object',
+	 *  else returns the original object
+	 */
+	var str = function (o) {
+		if (typeof o == "string" || isStr(o)) return $.trim(o); // trim converts 'String object' to a simple string
+		else return o;
+	};
+
+	/**
+	 * min / max
+	 *
+	 * Alias for Math.min/.max to simplify coding
+	 */
+	var min = function (x,y) { return Math.min(x,y); };
+	var max = function (x,y) { return Math.max(x,y); };
+
+	/**
+	 * transformData
+	 *
+	 * Processes the options passed in and transforms them into the format used by layout()
+	 * Missing keys are added, and converts the data if passed in 'flat-format' (no sub-keys)
+	 * In flat-format, pane-specific-settings are prefixed like: north__optName  (2-underscores)
+	 * To update effects, options MUST use nested-keys format, with an effects key
+	 *
+	 * @callers  initOptions()
+	 * @params  JSON  d  Data/options passed by user - may be a single level or nested levels
+	 * @returns JSON  Creates a data struture that perfectly matches 'options', ready to be imported
+	 */
+	var transformData = function (d) {
+		var json = { defaults:{fxSettings:{}}, north:{fxSettings:{}}, south:{fxSettings:{}}, east:{fxSettings:{}}, west:{fxSettings:{}}, center:{fxSettings:{}} };
+		d = d || {};
+		if (d.effects || d.defaults || d.north || d.south || d.west || d.east || d.center)
+			json = $.extend( json, d ); // already in json format - add to base keys
+		else
+			// convert 'flat' to 'nest-keys' format - also handles 'empty' user-options
+			$.each( d, function (key,val) {
+				a = key.split("__");
+				json[ a[1] ? a[0] : "defaults" ][ a[1] ? a[1] : a[0] ] = val;
+			});
+		return json;
+	};
+
+	/**
+	 * setFlowCallback
+	 *
+	 * Set an INTERNAL callback to avoid simultaneous animation
+	 * Runs only if needed and only if all callbacks are not 'already set'!
+	 *
+	 * @param String   action  Either 'open' or 'close'
+	 * @pane  String   pane    A valid border-pane name, eg 'west'
+	 * @pane  Boolean  param   Extra param for callback (optional)
+	 */
+	var setFlowCallback = function (action, pane, param) {
+		var
+			cb = action +","+ pane +","+ (param ? 1 : 0)
+		,	cP, cbPane
+		;
+		$.each(c.borderPanes.split(","), function (i,p) {
+			if (c[p].isMoving) {
+				bindCallback(p); // TRY to bind a callback
+				return false; // BREAK
+			}
+		});
+
+		function bindCallback (p, test) {
+			cP = c[p];
+			if (!cP.doCallback) {
+				cP.doCallback = true;
+				cP.callback = cb;
+			}
+			else { // try to 'chain' this callback
+				cpPane = cP.callback.split(",")[1]; // 2nd param is 'pane'
+				if (cpPane != p && cpPane != pane) // callback target NOT 'itself' and NOT 'this pane'
+					bindCallback (cpPane, true); // RECURSE
+			}
+		}
+	};
+
+	/**
+	 * execFlowCallback
+	 *
+	 * RUN the INTERNAL callback for this pane - if one exists
+	 *
+	 * @param String   action  Either 'open' or 'close'
+	 * @pane  String   pane    A valid border-pane name, eg 'west'
+	 * @pane  Boolean  param   Extra param for callback (optional)
+	 */
+	var execFlowCallback = function (pane) {
+		var cP = c[pane];
+
+		// RESET flow-control flaGs
+		c.isLayoutBusy = false;
+		delete cP.isMoving;
+		if (!cP.doCallback || !cP.callback) return;
+
+		cP.doCallback = false; // RESET logic flag
+
+		// EXECUTE the callback
+		var
+			cb = cP.callback.split(",")
+		,	param = (cb[2] > 0 ? true : false)
+		;
+		if (cb[0] == "open")
+			open( cb[1], param  );
+		else if (cb[0] == "close")
+			close( cb[1], param );
+
+		if (!cP.doCallback) cP.callback = null; // RESET - unless callback above enabled it again!
+	};
+
+	/**
+	 * execUserCallback
+	 *
+	 * Executes a Callback function after a trigger event, like resize, open or close
+	 *
+	 * @param String  pane   This is passed only so we can pass the 'pane object' to the callback
+	 * @param String  v_fn  Accepts a function name, OR a comma-delimited array: [0]=function name, [1]=argument
+	 */
+	var execUserCallback = function (pane, v_fn) {
+		if (!v_fn) return;
+		var fn;
+		try {
+			if (typeof v_fn == "function")
+				fn = v_fn;	
+			else if (typeof v_fn != "string")
+				return;
+			else if (v_fn.indexOf(",") > 0) {
+				// function name cannot contain a comma, so must be a function name AND a 'name' parameter
+				var
+					args = v_fn.split(",")
+				,	fn = eval(args[0])
+				;
+				if (typeof fn=="function" && args.length > 1)
+					return fn(args[1]); // pass the argument parsed from 'list'
+			}
+			else // just the name of an external function?
+				fn = eval(v_fn);
+
+			if (typeof fn=="function")
+				// pass data: pane-name, pane-element, pane-state, pane-options, and layout-name
+				return fn( pane, $Ps[pane], $.extend({},state[pane]), $.extend({},options[pane]), options.name );
+		}
+		catch (ex) {}
+	};
+
+	/**
+	 * cssNum
+	 *
+	 * Returns the 'current CSS value' for an element - returns 0 if property does not exist
+	 *
+	 * @callers  Called by many methods
+	 * @param jQuery  $Elem  Must pass a jQuery object - first element is processed
+	 * @param String  property  The name of the CSS property, eg: top, width, etc.
+	 * @returns Variant  Usually is used to get an integer value for position (top, left) or size (height, width)
+	 */
+	var cssNum = function ($E, prop) {
+		var
+			val = 0
+		,	hidden = false
+		,	visibility = ""
+		;
+		if (!$.browser.msie) { // IE CAN read dimensions of 'hidden' elements - FF CANNOT
+			if ($.css($E[0], "display", true) == "none") {
+				hidden = true;
+				visibility = $.css($E[0], "visibility", true); // SAVE current setting
+				$E.css({ display: "block", visibility: "hidden" }); // show element 'invisibly' so we can measure it
+			}
+		}
+
+		val = parseInt($.css($E[0], prop, true), 10) || 0;
+
+		if (hidden) { // WAS hidden, so put back the way it was
+			$E.css({ display: "none" });
+			if (visibility && visibility != "hidden")
+				$E.css({ visibility: visibility }); // reset 'visibility'
+		}
+
+		return val;
+	};
+
+	/**
+	 * cssW / cssH / cssSize
+	 *
+	 * Contains logic to check boxModel & browser, and return the correct width/height for the current browser/doctype
+	 *
+	 * @callers  initPanes(), sizeMidPanes(), initHandles(), sizeHandles()
+	 * @param Variant  elem  Can accept a 'pane' (east, west, etc) OR a DOM object OR a jQuery object
+	 * @param Integer  outerWidth/outerHeight  (optional) Can pass a width, allowing calculations BEFORE element is resized
+	 * @returns Integer  Returns the innerHeight of the elem by subtracting padding and borders
+	 *
+	 * @TODO  May need to add additional logic to handle more browser/doctype variations?
+	 */
+	var cssW = function (e, outerWidth) {
+		var $E;
+		if (isStr(e)) {
+			e = str(e);
+			$E = $Ps[e];
+		}
+		else
+			$E = $(e);
+
+		// a 'calculated' outerHeight can be passed so borders and/or padding are removed if needed
+		if (outerWidth <= 0)
+			return 0;
+		else if (!(outerWidth>0))
+			outerWidth = isStr(e) ? getPaneSize(e) : $E.outerWidth();
+
+		if (!$.boxModel)
+			return outerWidth;
+
+		else // strip border and padding size from outerWidth to get CSS Width
+			return outerWidth
+				- cssNum($E, "paddingLeft")		
+				- cssNum($E, "paddingRight")
+				- ($.css($E[0], "borderLeftStyle", true) == "none" ? 0 : cssNum($E, "borderLeftWidth"))
+				- ($.css($E[0], "borderRightStyle", true) == "none" ? 0 : cssNum($E, "borderRightWidth"))
+			;
+	};
+	var cssH = function (e, outerHeight) {
+		var $E;
+		if (isStr(e)) {
+			e = str(e);
+			$E = $Ps[e];
+		}
+		else
+			$E = $(e);
+
+		// a 'calculated' outerHeight can be passed so borders and/or padding are removed if needed
+		if (outerHeight <= 0)
+			return 0;
+		else if (!(outerHeight>0))
+			outerHeight = (isStr(e)) ? getPaneSize(e) : $E.outerHeight();
+
+		if (!$.boxModel)
+			return outerHeight;
+
+		else // strip border and padding size from outerHeight to get CSS Height
+			return outerHeight
+				- cssNum($E, "paddingTop")
+				- cssNum($E, "paddingBottom")
+				- ($.css($E[0], "borderTopStyle", true) == "none" ? 0 : cssNum($E, "borderTopWidth"))
+				- ($.css($E[0], "borderBottomStyle", true) == "none" ? 0 : cssNum($E, "borderBottomWidth"))
+			;
+	};
+	var cssSize = function (pane, outerSize) {
+		if (c[pane].dir=="horz") // pane = north or south
+			return cssH(pane, outerSize);
+		else // pane = east or west
+			return cssW(pane, outerSize);
+	};
+
+	/**
+	 * getPaneSize
+	 *
+	 * Calculates the current 'size' (width or height) of a border-pane - optionally with 'pane spacing' added
+	 *
+	 * @returns Integer  Returns EITHER Width for east/west panes OR Height for north/south panes - adjusted for boxModel & browser
+	 */
+	var getPaneSize = function (pane, inclSpace) {
+		var 
+			$P	= $Ps[pane]
+		,	o	= options[pane]
+		,	s	= state[pane]
+		,	oSp	= (inclSpace ? o.spacing_open : 0)
+		,	cSp	= (inclSpace ? o.spacing_closed : 0)
+		;
+		if (!$P || s.isHidden)
+			return 0;
+		else if (s.isClosed || (s.isSliding && inclSpace))
+			return cSp;
+		else if (c[pane].dir == "horz")
+			return $P.outerHeight() + oSp;
+		else // dir == "vert"
+			return $P.outerWidth() + oSp;
+	};
+
+	var setPaneMinMaxSizes = function (pane) {
+		var 
+			d				= cDims
+		,	edge			= c[pane].edge
+		,	dir				= c[pane].dir
+		,	o				= options[pane]
+		,	s				= state[pane]
+		,	$P				= $Ps[pane]
+		,	$altPane		= $Ps[ altSide[pane] ]
+		,	paneSpacing		= o.spacing_open
+		,	altPaneSpacing	= options[ altSide[pane] ].spacing_open
+		,	altPaneSize		= (!$altPane ? 0 : (dir=="horz" ? $altPane.outerHeight() : $altPane.outerWidth()))
+		,	containerSize	= (dir=="horz" ? d.innerHeight : d.innerWidth)
+		//	limitSize prevents this pane from 'overlapping' opposite pane - even if opposite pane is currently closed
+		,	limitSize		= containerSize - paneSpacing - altPaneSize - altPaneSpacing
+		,	minSize			= s.minSize || 0
+		,	maxSize			= Math.min(s.maxSize || 9999, limitSize)
+		,	minPos, maxPos	// used to set resizing limits
+		;
+		switch (pane) {
+			case "north":	minPos = d.offsetTop + minSize;
+							maxPos = d.offsetTop + maxSize;
+							break;
+			case "west":	minPos = d.offsetLeft + minSize;
+							maxPos = d.offsetLeft + maxSize;
+							break;
+			case "south":	minPos = d.offsetTop + d.innerHeight - maxSize;
+							maxPos = d.offsetTop + d.innerHeight - minSize;
+							break;
+			case "east":	minPos = d.offsetLeft + d.innerWidth - maxSize;
+							maxPos = d.offsetLeft + d.innerWidth - minSize;
+							break;
+		}
+		// save data to pane-state
+		$.extend(s, { minSize: minSize, maxSize: maxSize, minPosition: minPos, maxPosition: maxPos });
+	};
+
+	/**
+	 * getPaneDims
+	 *
+	 * Returns data for setting the size/position of center pane. Date is also used to set Height for east/west panes
+	 *
+	 * @returns JSON  Returns a hash of all dimensions: top, bottom, left, right, (outer) width and (outer) height
+	 */
+	var getPaneDims = function () {
+		var d = {
+			top:	getPaneSize("north", true) // true = include 'spacing' value for p
+		,	bottom:	getPaneSize("south", true)
+		,	left:	getPaneSize("west", true)
+		,	right:	getPaneSize("east", true)
+		,	width:	0
+		,	height:	0
+		};
+
+		with (d) {
+			width 	= cDims.innerWidth - left - right;
+			height 	= cDims.innerHeight - bottom - top;
+			// now add the 'container border/padding' to get final positions - relative to the container
+			top		+= cDims.top;
+			bottom	+= cDims.bottom;
+			left	+= cDims.left;
+			right	+= cDims.right;
+		}
+
+		return d;
+	};
+
+
+	/**
+	 * getElemDims
+	 *
+	 * Returns data for setting size of an element (container or a pane).
+	 *
+	 * @callers  create(), onWindowResize() for container, plus others for pane
+	 * @returns JSON  Returns a hash of all dimensions: top, bottom, left, right, outerWidth, innerHeight, etc
+	 */
+	var getElemDims = function ($E) {
+		var
+			d = {} // dimensions hash
+		,	e, b, p // edge, border, padding
+		;
+
+		$.each("Left,Right,Top,Bottom".split(","), function () {
+			e = str(this);
+			b = d["border" +e] = cssNum($E, "border"+e+"Width");
+			p = d["padding"+e] = cssNum($E, "padding"+e);
+			d["offset" +e] = b + p; // total offset of content from outer edge
+			// if BOX MODEL, then 'position' = PADDING (ignore borderWidth)
+			if ($E == $Container)
+				d[e.toLowerCase()] = ($.boxModel ? p : 0); 
+		});
+
+		d.innerWidth  = d.outerWidth  = $E.outerWidth();
+		d.innerHeight = d.outerHeight = $E.outerHeight();
+		if ($.boxModel) {
+			d.innerWidth  -= (d.offsetLeft + d.offsetRight);
+			d.innerHeight -= (d.offsetTop  + d.offsetBottom);
+		}
+
+		return d;
+	};
+
+
+	var setTimer = function (pane, action, fn, ms) {
+		var
+			Layout = window.layout = window.layout || {}
+		,	Timers = Layout.timers = Layout.timers || {}
+		,	name = "layout_"+ state.id +"_"+ pane +"_"+ action // UNIQUE NAME for every layout-pane-action
+		;
+		if (Timers[name]) return; // timer already set!
+		else Timers[name] = setTimeout(fn, ms);
+	};
+
+	var clearTimer = function (pane, action) {
+		var
+			Layout = window.layout = window.layout || {}
+		,	Timers = Layout.timers = Layout.timers || {}
+		,	name = "layout_"+ state.id +"_"+ pane +"_"+ action // UNIQUE NAME for every layout-pane-action
+		;
+		if (Timers[name]) {
+			clearTimeout( Timers[name] );
+			delete Timers[name];
+			return true;
+		}
+		else
+			return false;
+	};
+
+
+/*
+ * ###########################
+ *   INITIALIZATION METHODS
+ * ###########################
+ */
+
+	/**
+	 * create
+	 *
+	 * Initialize the layout - called automatically whenever an instance of layout is created
+	 *
+	 * @callers  NEVER explicity called
+	 * @returns  An object pointer to the instance created
+	 */
+	var create = function () {
+		// initialize config/options
+		initOptions();
+
+		// initialize all objects
+		initContainer();	// set CSS as needed and init state.container dimensions
+		initPanes();		// size & position all panes
+		initHandles();		// create and position all resize bars & togglers buttons
+		initResizable();	// activate resizing on all panes where resizable=true
+		sizeContent("all");	// AFTER panes & handles have been initialized, size 'content' divs
+
+		if (options.scrollToBookmarkOnLoad)
+			with (self.location) if (hash) replace( hash ); // scrollTo Bookmark
+
+		// bind hotkey function - keyDown - if required
+		initHotkeys();
+
+		// bind resizeAll() for 'this layout instance' to window.resize event
+		$(window).resize(function () {
+			var timerID = "timerLayout_"+state.id;
+			if (window[timerID]) clearTimeout(window[timerID]);
+			window[timerID] = null;
+			if (true || $.browser.msie) // use a delay for IE because the resize event fires repeatly
+				window[timerID] = setTimeout(resizeAll, 100);
+			else // most other browsers have a built-in delay before firing the resize event
+				resizeAll(); // resize all layout elements NOW!
+		});
+	};
+
+	/**
+	 * initContainer
+	 *
+	 * Validate and initialize container CSS and events
+	 *
+	 * @callers  create()
+	 */
+	var initContainer = function () {
+		try { // format html/body if this is a full page layout
+			if ($Container[0].tagName == "BODY") {
+				$("html").css({
+					height:		"100%"
+				,	overflow:	"hidden"
+				});
+				$("body").css({
+					position:	"relative"
+				,	height:		"100%"
+				,	overflow:	"hidden"
+				,	margin:		0
+				,	padding:	0		// TODO: test whether body-padding could be handled?
+				,	border:		"none"	// a body-border creates problems because it cannot be measured!
+				});
+			}
+			else { // set required CSS - overflow and position
+				var
+					CSS	= { overflow: "hidden" } // make sure container will not 'scroll'
+				,	p	= $Container.css("position")
+				,	h	= $Container.css("height")
+				;
+				// if this is a NESTED layout, then outer-pane ALREADY has position and height
+				if (!$Container.hasClass("ui-layout-pane")) {
+					if (!p || "fixed,absolute,relative".indexOf(p) < 0)
+						CSS.position = "relative"; // container MUST have a 'position'
+					if (!h || h=="auto")
+						CSS.height = "100%"; // container MUST have a 'height'
+				}
+				$Container.css( CSS );
+			}
+		} catch (ex) {}
+
+		// get layout-container dimensions (updated when necessary)
+		cDims = state.container = getElemDims( $Container ); // update data-pointer too
+	};
+
+	/**
+	 * initHotkeys
+	 *
+	 * Bind layout hotkeys - if options enabled
+	 *
+	 * @callers  create()
+	 */
+	var initHotkeys = function () {
+		// bind keyDown to capture hotkeys, if option enabled for ANY pane
+		$.each(c.borderPanes.split(","), function (i,pane) {
+			var o = options[pane];
+			if (o.enableCursorHotkey || o.customHotkey) {
+				$(document).keydown( keyDown ); // only need to bind this ONCE
+				return false; // BREAK - binding was done
+			}
+		});
+	};
+
+	/**
+	 * initOptions
+	 *
+	 * Build final CONFIG and OPTIONS data
+	 *
+	 * @callers  create()
+	 */
+	var initOptions = function () {
+		// simplify logic by making sure passed 'opts' var has basic keys
+		opts = transformData( opts );
+
+		// update default effects, if case user passed key
+		if (opts.effects) {
+			$.extend( effects, opts.effects );
+			delete opts.effects;
+		}
+
+		// see if any 'global options' were specified
+		$.each("name,scrollToBookmarkOnLoad".split(","), function (idx,key) {
+			if (opts[key] !== undefined)
+				options[key] = opts[key];
+			else if (opts.defaults[key] !== undefined) {
+				options[key] = opts.defaults[key];
+				delete opts.defaults[key];
+			}
+		});
+
+		// remove any 'defaults' that MUST be set 'per-pane'
+		$.each("paneSelector,resizerCursor,customHotkey".split(","),
+			function (idx,key) { delete opts.defaults[key]; } // is OK if key does not exist
+		);
+
+		// now update options.defaults
+		$.extend( options.defaults, opts.defaults );
+		// make sure required sub-keys exist
+		//if (typeof options.defaults.fxSettings != "object") options.defaults.fxSettings = {};
+
+		// merge all config & options for the 'center' pane
+		c.center = $.extend( true, {}, c.defaults, c.center );
+		$.extend( options.center, opts.center );
+		// Most 'default options' do not apply to 'center', so add only those that DO
+		var o_Center = $.extend( true, {}, options.defaults, opts.defaults, options.center ); // TEMP data
+		$.each("paneClass,contentSelector,contentIgnoreSelector,applyDefaultStyles,showOverflowOnHover".split(","),
+			function (idx,key) { options.center[key] = o_Center[key]; }
+		);
+
+		var defs = options.defaults;
+
+		// create a COMPLETE set of options for EACH border-pane
+		$.each(c.borderPanes.split(","), function(i,pane) {
+			// apply 'pane-defaults' to CONFIG.PANE
+			c[pane] = $.extend( true, {}, c.defaults, c[pane] );
+			// apply 'pane-defaults' +  user-options to OPTIONS.PANE
+			o = options[pane] = $.extend( true, {}, options.defaults, options[pane], opts.defaults, opts[pane] );
+
+			// make sure we have base-classes
+			if (!o.paneClass)		o.paneClass		= defaults.paneClass;
+			if (!o.resizerClass)	o.resizerClass	= defaults.resizerClass;
+			if (!o.togglerClass)	o.togglerClass	= defaults.togglerClass;
+
+			// create FINAL fx options for each pane, ie: options.PANE.fxName/fxSpeed/fxSettings[_open|_close]
+			$.each(["_open","_close",""], function (i,n) { 
+				var
+					sName		= "fxName"+n
+				,	sSpeed		= "fxSpeed"+n
+				,	sSettings	= "fxSettings"+n
+				;
+				// recalculate fxName according to specificity rules
+				o[sName] =
+					opts[pane][sName]		// opts.west.fxName_open
+				||	opts[pane].fxName		// opts.west.fxName
+				||	opts.defaults[sName]	// opts.defaults.fxName_open
+				||	opts.defaults.fxName	// opts.defaults.fxName
+				||	o[sName]				// options.west.fxName_open
+				||	o.fxName				// options.west.fxName
+				||	defs[sName]				// options.defaults.fxName_open
+				||	defs.fxName				// options.defaults.fxName
+				||	"none"
+				;
+				// validate fxName to be sure is a valid effect
+				var fxName = o[sName];
+				if (fxName == "none" || !$.effects || !$.effects[fxName] || (!effects[fxName] && !o[sSettings] && !o.fxSettings))
+					fxName = o[sName] = "none"; // effect not loaded, OR undefined FX AND fxSettings not passed
+				// set vars for effects subkeys to simplify logic
+				var
+					fx = effects[fxName]	|| {} // effects.slide
+				,	fx_all	= fx.all		|| {} // effects.slide.all
+				,	fx_pane	= fx[pane]		|| {} // effects.slide.west
+				;
+				// RECREATE the fxSettings[_open|_close] keys using specificity rules
+				o[sSettings] = $.extend(
+					{}
+				,	fx_all						// effects.slide.all
+				,	fx_pane						// effects.slide.west
+				,	defs.fxSettings || {}		// options.defaults.fxSettings
+				,	defs[sSettings] || {}		// options.defaults.fxSettings_open
+				,	o.fxSettings				// options.west.fxSettings
+				,	o[sSettings]				// options.west.fxSettings_open
+				,	opts.defaults.fxSettings	// opts.defaults.fxSettings
+				,	opts.defaults[sSettings] || {} // opts.defaults.fxSettings_open
+				,	opts[pane].fxSettings		// opts.west.fxSettings
+				,	opts[pane][sSettings] || {}	// opts.west.fxSettings_open
+				);
+				// recalculate fxSpeed according to specificity rules
+				o[sSpeed] =
+					opts[pane][sSpeed]		// opts.west.fxSpeed_open
+				||	opts[pane].fxSpeed		// opts.west.fxSpeed (pane-default)
+				||	opts.defaults[sSpeed]	// opts.defaults.fxSpeed_open
+				||	opts.defaults.fxSpeed	// opts.defaults.fxSpeed
+				||	o[sSpeed]				// options.west.fxSpeed_open
+				||	o[sSettings].duration	// options.west.fxSettings_open.duration
+				||	o.fxSpeed				// options.west.fxSpeed
+				||	o.fxSettings.duration	// options.west.fxSettings.duration
+				||	defs.fxSpeed			// options.defaults.fxSpeed
+				||	defs.fxSettings.duration// options.defaults.fxSettings.duration
+				||	fx_pane.duration		// effects.slide.west.duration
+				||	fx_all.duration			// effects.slide.all.duration
+				||	"normal"				// DEFAULT
+				;
+				// DEBUG: if (pane=="east") debugData( $.extend({}, {speed: o[sSpeed], fxSettings_duration: o[sSettings].duration}, o[sSettings]), pane+"."+sName+" = "+fxName );
+			});
+		});
+	};
+
+	/**
+	 * initPanes
+	 *
+	 * Initialize module objects, styling, size and position for all panes
+	 *
+	 * @callers  create()
+	 */
+	var initPanes = function () {
+		// NOTE: do north & south FIRST so we can measure their height - do center LAST
+		$.each(c.allPanes.split(","), function() {
+			var 
+				pane	= str(this)
+			,	o		= options[pane]
+			,	s		= state[pane]
+			,	fx		= s.fx
+			,	dir		= c[pane].dir
+			//	if o.size is not > 0, then we will use MEASURE the pane and use that as it's 'size'
+			,	size	= o.size=="auto" || isNaN(o.size) ? 0 : o.size
+			,	minSize	= o.minSize || 1
+			,	maxSize	= o.maxSize || 9999
+			,	spacing	= o.spacing_open || 0
+			,	sel		= o.paneSelector
+			,	isIE6	= ($.browser.msie && $.browser.version < 7)
+			,	CSS		= {}
+			,	$P, $C
+			;
+			$Cs[pane] = false; // init
+
+			if (sel.substr(0,1)==="#") // ID selector
+				// NOTE: elements selected 'by ID' DO NOT have to be 'children'
+				$P = $Ps[pane] = $Container.find(sel+":first");
+			else { // class or other selector
+				$P = $Ps[pane] = $Container.children(sel+":first");
+				// look for the pane nested inside a 'form' element
+				if (!$P.length) $P = $Ps[pane] = $Container.children("form:first").children(sel+":first");
+			}
+
+			if (!$P.length) {
+				$Ps[pane] = false; // logic
+				return true; // SKIP to next
+			}
+
+			// add basic classes & attributes
+			$P
+				.attr("pane", pane) // add pane-identifier
+				.addClass( o.paneClass +" "+ o.paneClass+"-"+pane ) // default = "ui-layout-pane ui-layout-pane-west" - may be a dupe of 'paneSelector'
+			;
+
+			// init pane-logic vars, etc.
+			if (pane != "center") {
+				s.isClosed  = false; // true = pane is closed
+				s.isSliding = false; // true = pane is currently open by 'sliding' over adjacent panes
+				s.isResizing= false; // true = pane is in process of being resized
+				s.isHidden	= false; // true = pane is hidden - no spacing, resizer or toggler is visible!
+				s.noRoom	= false; // true = pane 'automatically' hidden due to insufficient room - will unhide automatically
+				// create special keys for internal use
+				c[pane].pins = [];   // used to track and sync 'pin-buttons' for border-panes
+			}
+
+			CSS = $.extend({ visibility: "visible", display: "block" }, c.defaults.cssReq, c[pane].cssReq );
+			if (o.applyDefaultStyles) $.extend( CSS, c.defaults.cssDef, c[pane].cssDef ); // cosmetic defaults
+			$P.css(CSS); // add base-css BEFORE 'measuring' to calc size & position
+			CSS = {};	// reset var
+
+			// set css-position to account for container borders & padding
+			switch (pane) {
+				case "north": 	CSS.top 	= cDims.top;
+								CSS.left 	= cDims.left;
+								CSS.right	= cDims.right;
+								break;
+				case "south": 	CSS.bottom	= cDims.bottom;
+								CSS.left 	= cDims.left;
+								CSS.right 	= cDims.right;
+								break;
+				case "west": 	CSS.left 	= cDims.left; // top, bottom & height set by sizeMidPanes()
+								break;
+				case "east": 	CSS.right 	= cDims.right; // ditto
+								break;
+				case "center":	// top, left, width & height set by sizeMidPanes()
+			}
+
+			if (dir == "horz") { // north or south pane
+				if (size === 0 || size == "auto") {
+					$P.css({ height: "auto" });
+					size = $P.outerHeight();
+				}
+				size = max(size, minSize);
+				size = min(size, maxSize);
+				size = min(size, cDims.innerHeight - spacing);
+				CSS.height = max(1, cssH(pane, size));
+				s.size = size; // update state
+				// make sure minSize is sufficient to avoid errors
+				s.maxSize = maxSize; // init value
+				s.minSize = max(minSize, size - CSS.height + 1); // = pane.outerHeight when css.height = 1px
+				// handle IE6
+				//if (isIE6) CSS.width = cssW($P, cDims.innerWidth);
+				$P.css(CSS); // apply size & position
+			}
+			else if (dir == "vert") { // east or west pane
+				if (size === 0 || size == "auto") {
+					$P.css({ width: "auto", float: "left" }); // float = FORCE pane to auto-size
+					size = $P.outerWidth();
+					$P.css({ float: "none" }); // RESET
+				}
+				size = max(size, minSize);
+				size = min(size, maxSize);
+				size = min(size, cDims.innerWidth - spacing);
+				CSS.width = max(1, cssW(pane, size));
+				s.size = size; // update state
+				s.maxSize = maxSize; // init value
+				// make sure minSize is sufficient to avoid errors
+				s.minSize = max(minSize, size - CSS.width + 1); // = pane.outerWidth when css.width = 1px
+				$P.css(CSS); // apply size - top, bottom & height set by sizeMidPanes
+				sizeMidPanes(pane, null, true); // true = onInit
+			}
+			else if (pane == "center") {
+				$P.css(CSS); // top, left, width & height set by sizeMidPanes...
+				sizeMidPanes("center", null, true); // true = onInit
+			}
+
+			// close or hide the pane if specified in settings
+			if (o.initClosed && o.closable) {
+				$P.hide().addClass("closed");
+				s.isClosed = true;
+			}
+			else if (o.initHidden || o.initClosed) {
+				hide(pane, true); // will be completely invisible - no resizer or spacing
+				s.isHidden = true;
+			}
+			else
+				$P.addClass("open");
+
+			// check option for auto-handling of pop-ups & drop-downs
+			if (o.showOverflowOnHover)
+				$P.hover( allowOverflow, resetOverflow );
+
+			/*
+			 *	see if this pane has a 'content element' that we need to auto-size
+			 */
+			if (o.contentSelector) {
+				$C = $Cs[pane] = $P.children(o.contentSelector+":first"); // match 1-element only
+				if (!$C.length) {
+					$Cs[pane] = false;
+					return true; // SKIP to next
+				}
+				$C.css( c.content.cssReq );
+				if (o.applyDefaultStyles) $C.css( c.content.cssDef ); // cosmetic defaults
+				// NO PANE-SCROLLING when there is a content-div
+				$P.css({ overflow: "hidden" });
+			}
+		});
+	};
+
+	/**
+	 * initHandles
+	 *
+	 * Initialize module objects, styling, size and position for all resize bars and toggler buttons
+	 *
+	 * @callers  create()
+	 */
+	var initHandles = function () {
+		// create toggler DIVs for each pane, and set object pointers for them, eg: $R.north = north toggler DIV
+		$.each(c.borderPanes.split(","), function() {
+			var 
+				pane	= str(this)
+			,	o		= options[pane]
+			,	s		= state[pane]
+			,	rClass	= o.resizerClass
+			,	tClass	= o.togglerClass
+			,	$P		= $Ps[pane]
+			;
+			$Rs[pane] = false; // INIT
+			$Ts[pane] = false;
+
+			if (!$P || (!o.closable && !o.resizable)) return; // pane does not exist - skip
+
+			var 
+				edge	= c[pane].edge
+			,	isOpen	= $P.is(":visible")
+			,	spacing	= (isOpen ? o.spacing_open : o.spacing_closed)
+			,	_pane	= "-"+ pane // used for classNames
+			,	_state	= (isOpen ? "-open" : "-closed") // used for classNames
+			,	$R, $T
+			;
+			// INIT RESIZER BAR
+			$R = $Rs[pane] = $("<span></span>");
+	
+			if (isOpen && o.resizable)
+				; // this is handled by initResizable
+			else if (!isOpen && o.slidable)
+				$R.attr("title", o.sliderTip).css("cursor", o.sliderCursor);
+	
+			$R
+				// if paneSelector is an ID, then create a matching ID for the resizer, eg: "#paneLeft" => "paneLeft-resizer"
+				.attr("id", (o.paneSelector.substr(0,1)=="#" ? o.paneSelector.substr(1) + "-resizer" : ""))
+				.attr("resizer", pane) // so we can read this from the resizer
+				.css(c.resizers.cssReq) // add base/required styles
+				// POSITION of resizer bar - allow for container border & padding
+				.css(edge, cDims[edge] + getPaneSize(pane))
+				// ADD CLASSNAMES - eg: class="resizer resizer-west resizer-open"
+				.addClass( rClass +" "+ rClass+_pane +" "+ rClass+_state +" "+ rClass+_pane+_state )
+				.appendTo($Container) // append DIV to container
+			;
+			 // ADD VISUAL STYLES
+			if (o.applyDefaultStyles)
+				$R.css(c.resizers.cssDef);
+
+			if (o.closable) {
+				// INIT COLLAPSER BUTTON
+				$T = $Ts[pane] = $("<div></div>");
+				$T
+					// if paneSelector is an ID, then create a matching ID for the resizer, eg: "#paneLeft" => "paneLeft-toggler"
+					.attr("id", (o.paneSelector.substr(0,1)=="#" ? o.paneSelector.substr(1) + "-toggler" : ""))
+					.css(c.togglers.cssReq) // add base/required styles
+					.attr("title", (isOpen ? o.togglerTip_open : o.togglerTip_closed))
+					.click(function(evt){ toggle(pane); evt.stopPropagation(); })
+					.mouseover(function(evt){ evt.stopPropagation(); }) // prevent resizer event
+					// ADD CLASSNAMES - eg: class="toggler toggler-west toggler-west-open"
+					.addClass( tClass +" "+ tClass+_pane +" "+ tClass+_state +" "+ tClass+_pane+_state )
+					.appendTo($R) // append SPAN to resizer DIV
+				;
+
+				// ADD INNER-SPANS TO TOGGLER
+				if (o.togglerContent_open) // ui-layout-open
+					$("<span>"+ o.togglerContent_open +"</span>")
+						.addClass("content content-open")
+						.css("display", s.isClosed ? "none" : "block")
+						.appendTo( $T )
+					;
+				if (o.togglerContent_closed) // ui-layout-closed
+					$("<span>"+ o.togglerContent_closed +"</span>")
+						.addClass("content content-closed")
+						.css("display", s.isClosed ? "block" : "none")
+						.appendTo( $T )
+					;
+
+				 // ADD BASIC VISUAL STYLES
+				if (o.applyDefaultStyles)
+					$T.css(c.togglers.cssDef);
+
+				if (!isOpen) bindStartSlidingEvent(pane, true); // will enable if state.PANE.isSliding = true
+			}
+
+		});
+
+		// SET ALL HANDLE SIZES & LENGTHS
+		sizeHandles("all", true); // true = onInit
+	};
+
+	/**
+	 * initResizable
+	 *
+	 * Add resize-bars to all panes that specify it in options
+	 *
+	 * @dependancies  $.fn.resizable - will abort if not found
+	 * @callers  create()
+	 */
+	var initResizable = function () {
+		var
+			draggingAvailable = (typeof $.fn.draggable == "function")
+		,	minPosition, maxPosition, edge // set in start()
+		;
+
+		$.each(c.borderPanes.split(","), function() {
+			var 
+				pane	= str(this)
+			,	o		= options[pane]
+			,	s		= state[pane]
+			;
+			if (!draggingAvailable || !$Ps[pane] || !o.resizable) {
+				o.resizable = false;
+				return true; // skip to next
+			}
+
+			var 
+				rClass				= o.resizerClass
+			//	'drag' classes are applied to the ORIGINAL resizer-bar while dragging is in process
+			,	dragClass			= rClass+"-drag"			// resizer-drag
+			,	dragPaneClass		= rClass+"-"+pane+"-drag"	// resizer-north-drag
+			//	'dragging' class is applied to the CLONED resizer-bar while it is being dragged
+			,	draggingClass		= rClass+"-dragging"		// resizer-dragging
+			,	draggingPaneClass	= rClass+"-"+pane+"-dragging" // resizer-north-dragging
+			,	draggingClassSet	= false 					// logic var
+			,	$P 					= $Ps[pane]
+			,	$R					= $Rs[pane]
+			;
+
+			if (!s.isClosed)
+				$R
+					.attr("title", o.resizerTip)
+					.css("cursor", o.resizerCursor) // n-resize, s-resize, etc
+				;
+
+			$R.draggable({
+				containment:	$Container[0] // limit resizing to layout container
+			,	axis:			(c[pane].dir=="horz" ? "y" : "x") // limit resizing to horz or vert axis
+			,	delay:			200
+			,	distance:		1
+			//	basic format for helper - style it using class: .ui-draggable-dragging
+			,	helper:			"clone"
+			,	opacity:		o.resizerDragOpacity
+			//,	iframeFix:		o.draggableIframeFix // TODO: consider using when bug is fixed
+			,	zIndex:			c.zIndex.resizing
+
+			,	start: function (e, ui) {
+					// onresize_start callback - will CANCEL hide if returns false
+					// TODO: CONFIRM that dragging can be cancelled like this???
+					if (false === execUserCallback(pane, o.onresize_start)) return false;
+
+					s.isResizing = true; // prevent pane from closing while resizing
+					clearTimer(pane, "closeSlider"); // just in case already triggered
+
+					$R.addClass( dragClass +" "+ dragPaneClass ); // add drag classes
+					draggingClassSet = false; // reset logic var - see drag()
+
+					// SET RESIZING LIMITS - used in drag()
+					var resizerWidth = (pane=="east" || pane=="south" ? o.spacing_open : 0);
+					setPaneMinMaxSizes(pane); // update pane-state
+					s.minPosition -= resizerWidth;
+					s.maxPosition -= resizerWidth;
+					edge = (c[pane].dir=="horz" ? "top" : "left");
+
+					// MASK PANES WITH IFRAMES OR OTHER TROUBLESOME ELEMENTS
+					$(o.maskIframesOnResize === true ? "iframe" : o.maskIframesOnResize).each(function() {					
+						$('<div class="ui-layout-mask"/>')
+							.css({
+								background:	"#fff"
+							,	opacity:	"0.001"
+							,	zIndex:		9
+							,	position:	"absolute"
+							,	width:		this.offsetWidth+"px"
+							,	height:		this.offsetHeight+"px"
+							})
+							.css($(this).offset()) // top & left
+							.appendTo(this.parentNode) // put div INSIDE pane to avoid zIndex issues
+						;
+					});
+				}
+
+			,	drag: function (e, ui) {
+					if (!draggingClassSet) { // can only add classes after clone has been added to the DOM
+						$(".ui-draggable-dragging")
+							.addClass( draggingClass +" "+ draggingPaneClass ) // add dragging classes
+							.children().css("visibility","hidden") // hide toggler inside dragged resizer-bar
+						;
+						draggingClassSet = true;
+						// draggable bug!? RE-SET zIndex to prevent E/W resize-bar showing through N/S pane!
+						if (s.isSliding) $Ps[pane].css("zIndex", c.zIndex.sliding);
+					}
+					// CONTAIN RESIZER-BAR TO RESIZING LIMITS
+					if		(ui.position[edge] < s.minPosition) ui.position[edge] = s.minPosition;
+					else if (ui.position[edge] > s.maxPosition) ui.position[edge] = s.maxPosition;
+				}
+
+			,	stop: function (e, ui) {
+					var 
+						dragPos	= ui.position
+					,	resizerPos
+					,	newSize
+					;
+					$R.removeClass( dragClass +" "+ dragPaneClass ); // remove drag classes
+	
+					switch (pane) {
+						case "north":	resizerPos = dragPos.top; break;
+						case "west":	resizerPos = dragPos.left; break;
+						case "south":	resizerPos = cDims.outerHeight - dragPos.top - $R.outerHeight(); break;
+						case "east":	resizerPos = cDims.outerWidth - dragPos.left - $R.outerWidth(); break;
+					}
+					// remove container margin from resizer position to get the pane size
+					newSize = resizerPos - cDims[ c[pane].edge ];
+
+					sizePane(pane, newSize);
+
+					// UN-MASK PANES MASKED IN drag.start
+					$("div.ui-layout-mask").remove(); // Remove iframe masks	
+
+					s.isResizing = false;
+				}
+
+			});
+		});
+	};
+
+
+
+/*
+ * ###########################
+ *       ACTION METHODS
+ * ###########################
+ */
+
+	/**
+	 * hide / show
+	 *
+	 * Completely 'hides' a pane, including its spacing - as if it does not exist
+	 * The pane is not actually 'removed' from the source, so can use 'show' to un-hide it
+	 *
+	 * @param String  pane   The pane being hidden, ie: north, south, east, or west
+	 */
+	var hide = function (pane, onInit) {
+		var
+			o	= options[pane]
+		,	s	= state[pane]
+		,	$P	= $Ps[pane]
+		,	$R	= $Rs[pane]
+		;
+		if (!$P || s.isHidden) return; // pane does not exist OR is already hidden
+
+		// onhide_start callback - will CANCEL hide if returns false
+		if (false === execUserCallback(pane, o.onhide_start)) return;
+
+		s.isSliding = false; // just in case
+
+		// now hide the elements
+		if ($R) $R.hide(); // hide resizer-bar
+		if (onInit || s.isClosed) {
+			s.isClosed = true; // to trigger open-animation on show()
+			s.isHidden  = true;
+			$P.hide(); // no animation when loading page
+			sizeMidPanes(c[pane].dir == "horz" ? "all" : "center");
+			execUserCallback(pane, o.onhide_end || o.onhide);
+		}
+		else {
+			s.isHiding = true; // used by onclose
+			close(pane, false); // adjust all panes to fit
+			//s.isHidden  = true; - will be set by close - if not cancelled
+		}
+	};
+
+	var show = function (pane, openPane) {
+		var
+			o	= options[pane]
+		,	s	= state[pane]
+		,	$P	= $Ps[pane]
+		,	$R	= $Rs[pane]
+		;
+		if (!$P || !s.isHidden) return; // pane does not exist OR is not hidden
+
+		// onhide_start callback - will CANCEL hide if returns false
+		if (false === execUserCallback(pane, o.onshow_start)) return;
+
+		s.isSliding = false; // just in case
+		s.isShowing = true; // used by onopen/onclose
+		//s.isHidden  = false; - will be set by open/close - if not cancelled
+
+		// now show the elements
+		if ($R && o.spacing_open > 0) $R.show();
+		if (openPane === false)
+			close(pane, true); // true = force
+		else
+			open(pane); // adjust all panes to fit
+	};
+
+
+	/**
+	 * toggle
+	 *
+	 * Toggles a pane open/closed by calling either open or close
+	 *
+	 * @param String  pane   The pane being toggled, ie: north, south, east, or west
+	 */
+	var toggle = function (pane) {
+		var s = state[pane];
+		if (s.isHidden)
+			show(pane); // will call 'open' after unhiding it
+		else if (s.isClosed)
+			open(pane);
+		else
+			close(pane);
+	};
+
+	/**
+	 * close
+	 *
+	 * Close the specified pane (animation optional), and resize all other panes as needed
+	 *
+	 * @param String  pane   The pane being closed, ie: north, south, east, or west
+	 */
+	var close = function (pane, force, noAnimation) {
+		var 
+			$P		= $Ps[pane]
+		,	$R		= $Rs[pane]
+		,	$T		= $Ts[pane]
+		,	o		= options[pane]
+		,	s		= state[pane]
+		,	doFX	= !noAnimation && !s.isClosed && (o.fxName_close != "none")
+		,	edge	= c[pane].edge
+		,	rClass	= o.resizerClass
+		,	tClass	= o.togglerClass
+		,	_pane	= "-"+ pane // used for classNames
+		,	_open	= "-open"
+		,	_sliding= "-sliding"
+		,	_closed	= "-closed"
+		// 	transfer logic vars to temp vars
+		,	isShowing = s.isShowing
+		,	isHiding = s.isHiding
+		;
+		// now clear the logic vars
+		delete s.isShowing;
+		delete s.isHiding;
+
+		if (!$P || (!o.resizable && !o.closable)) return; // invalid request
+		else if (!force && s.isClosed && !isShowing) return; // already closed
+
+		if (c.isLayoutBusy) { // layout is 'busy' - probably with an animation
+			setFlowCallback("close", pane, force); // set a callback for this action, if possible
+			return; // ABORT 
+		}
+
+		// onclose_start callback - will CANCEL hide if returns false
+		// SKIP if just 'showing' a hidden pane as 'closed'
+		if (!isShowing && false === execUserCallback(pane, o.onclose_start)) return;
+
+		// SET flow-control flags
+		c[pane].isMoving = true;
+		c.isLayoutBusy = true;
+
+		s.isClosed = true;
+		// update isHidden BEFORE sizing panes
+		if (isHiding) s.isHidden = true;
+		else if (isShowing) s.isHidden = false;
+
+		// sync any 'pin buttons'
+		syncPinBtns(pane, false);
+
+		// resize panes adjacent to this one
+		if (!s.isSliding) sizeMidPanes(c[pane].dir == "horz" ? "all" : "center");
+
+		// if this pane has a resizer bar, move it now
+		if ($R) {
+			$R
+				.css(edge, cDims[edge]) // move the resizer bar
+				.removeClass( rClass+_open +" "+ rClass+_pane+_open )
+				.removeClass( rClass+_sliding +" "+ rClass+_pane+_sliding )
+				.addClass( rClass+_closed +" "+ rClass+_pane+_closed )
+			;
+			// DISABLE 'resizing' when closed - do this BEFORE bindStartSlidingEvent
+			if (o.resizable)
+				$R
+					.draggable("disable")
+					.css("cursor", "default")
+					.attr("title","")
+				;
+			// if pane has a toggler button, adjust that too
+			if ($T) {
+				$T
+					.removeClass( tClass+_open +" "+ tClass+_pane+_open )
+					.addClass( tClass+_closed +" "+ tClass+_pane+_closed )
+					.attr("title", o.togglerTip_closed) // may be blank
+				;
+			}
+			sizeHandles(); // resize 'length' and position togglers for adjacent panes
+		}
+
+		// ANIMATE 'CLOSE' - if no animation, then was ALREADY shown above
+		if (doFX) {
+			lockPaneForFX(pane, true); // need to set left/top so animation will work
+			$P.hide( o.fxName_close, o.fxSettings_close, o.fxSpeed_close, function () {
+				lockPaneForFX(pane, false); // undo
+				if (!s.isClosed) return; // pane was opened before animation finished!
+				close_2();
+			});
+		}
+		else {
+			$P.hide(); // just hide pane NOW
+			close_2();
+		}
+
+		// SUBROUTINE
+		function close_2 () {
+			bindStartSlidingEvent(pane, true); // will enable if state.PANE.isSliding = true
+
+			// onclose callback - UNLESS just 'showing' a hidden pane as 'closed'
+			if (!isShowing)	execUserCallback(pane, o.onclose_end || o.onclose);
+			// onhide OR onshow callback
+			if (isShowing)	execUserCallback(pane, o.onshow_end || o.onshow);
+			if (isHiding)	execUserCallback(pane, o.onhide_end || o.onhide);
+
+			// internal flow-control callback
+			execFlowCallback(pane);
+		}
+	};
+
+	/**
+	 * open
+	 *
+	 * Open the specified pane (animation optional), and resize all other panes as needed
+	 *
+	 * @param String  pane   The pane being opened, ie: north, south, east, or west
+	 */
+	var open = function (pane, slide, noAnimation) {
+		var 
+			$P		= $Ps[pane]
+		,	$R		= $Rs[pane]
+		,	$T		= $Ts[pane]
+		,	o		= options[pane]
+		,	s		= state[pane]
+		,	doFX	= !noAnimation && s.isClosed && (o.fxName_open != "none")
+		,	edge	= c[pane].edge
+		,	rClass	= o.resizerClass
+		,	tClass	= o.togglerClass
+		,	_pane	= "-"+ pane // used for classNames
+		,	_open	= "-open"
+		,	_closed	= "-closed"
+		,	_sliding= "-sliding"
+		// 	transfer logic var to temp var
+		,	isShowing = s.isShowing
+		;
+		// now clear the logic var
+		delete s.isShowing;
+
+		if (!$P || (!o.resizable && !o.closable)) return; // invalid request
+		else if (!s.isClosed && !s.isSliding) return; // already open
+
+		// pane can ALSO be unhidden by just calling show(), so handle this scenario
+		if (s.isHidden && !isShowing) {
+			show(pane, true);
+			return;
+		}
+
+		if (c.isLayoutBusy) { // layout is 'busy' - probably with an animation
+			setFlowCallback("open", pane, slide); // set a callback for this action, if possible
+			return; // ABORT
+		}
+
+		// onopen_start callback - will CANCEL hide if returns false
+		if (false === execUserCallback(pane, o.onopen_start)) return;
+
+		// SET flow-control flags
+		c[pane].isMoving = true;
+		c.isLayoutBusy = true;
+
+		// 'PIN PANE' - stop sliding
+		if (s.isSliding && !slide) // !slide = 'open pane normally' - NOT sliding
+			bindStopSlidingEvents(pane, false); // will set isSliding=false
+
+		s.isClosed = false;
+		// update isHidden BEFORE sizing panes
+		if (isShowing) s.isHidden = false;
+
+		// Container size may have changed - shrink the pane if now 'too big'
+		setPaneMinMaxSizes(pane); // update pane-state
+		if (s.size > s.maxSize) // pane is too big! resize it before opening
+			$P.css( c[pane].sizeType, max(1, cssSize(pane, s.maxSize)) );
+
+		bindStartSlidingEvent(pane, false); // remove trigger event from resizer-bar
+
+		if (doFX) { // ANIMATE
+			lockPaneForFX(pane, true); // need to set left/top so animation will work
+			$P.show( o.fxName_open, o.fxSettings_open, o.fxSpeed_open, function() {
+				lockPaneForFX(pane, false); // undo
+				if (s.isClosed) return; // pane was closed before animation finished!
+				open_2(); // continue
+			});
+		}
+		else {// no animation
+			$P.show();	// just show pane and...
+			open_2();	// continue
+		}
+
+		// SUBROUTINE
+		function open_2 () {
+			// NOTE: if isSliding, then other panes are NOT 'resized'
+			if (!s.isSliding) // resize all panes adjacent to this one
+				sizeMidPanes(c[pane].dir=="vert" ? "center" : "all");
+
+			// if this pane has a toggler, move it now
+			if ($R) {
+				$R
+					.css(edge, cDims[edge] + getPaneSize(pane)) // move the toggler
+					.removeClass( rClass+_closed +" "+ rClass+_pane+_closed )
+					.addClass( rClass+_open +" "+ rClass+_pane+_open )
+					.addClass( !s.isSliding ? "" : rClass+_sliding +" "+ rClass+_pane+_sliding )
+				;
+				if (o.resizable)
+					$R
+						.draggable("enable")
+						.css("cursor", o.resizerCursor)
+						.attr("title", o.resizerTip)
+					;
+				else
+					$R.css("cursor", "default"); // n-resize, s-resize, etc
+				// if pane also has a toggler button, adjust that too
+				if ($T) {
+					$T
+						.removeClass( tClass+_closed +" "+ tClass+_pane+_closed )
+						.addClass( tClass+_open +" "+ tClass+_pane+_open )
+						.attr("title", o.togglerTip_open) // may be blank
+					;
+				}
+				sizeHandles("all"); // resize resizer & toggler sizes for all panes
+			}
+
+			// resize content every time pane opens - to be sure
+			sizeContent(pane);
+
+			// sync any 'pin buttons'
+			syncPinBtns(pane, !s.isSliding);
+
+			// onopen callback
+			execUserCallback(pane, o.onopen_end || o.onopen);
+
+			// onshow callback
+			if (isShowing) execUserCallback(pane, o.onshow_end || o.onshow);
+
+			// internal flow-control callback
+			execFlowCallback(pane);
+		}
+	};
+	
+
+	/**
+	 * lockPaneForFX
+	 *
+	 * Must set left/top on East/South panes so animation will work properly
+	 *
+	 * @param String  pane  The pane to lock, 'east' or 'south' - any other is ignored!
+	 * @param Boolean  doLock  true = set left/top, false = remove
+	 */
+	var lockPaneForFX = function (pane, doLock) {
+		var $P = $Ps[pane];
+		if (doLock) {
+			$P.css({ zIndex: c.zIndex.animation }); // overlay all elements during animation
+			if (pane=="south")
+				$P.css({ top: cDims.top + cDims.innerHeight - $P.outerHeight() });
+			else if (pane=="east")
+				$P.css({ left: cDims.left + cDims.innerWidth - $P.outerWidth() });
+		}
+		else {
+			if (!state[pane].isSliding) $P.css({ zIndex: c.zIndex.pane_normal });
+			if (pane=="south")
+				$P.css({ top: "auto" });
+			else if (pane=="east")
+				$P.css({ left: "auto" });
+		}
+	};
+
+
+	/**
+	 * bindStartSlidingEvent
+	 *
+	 * Toggle sliding functionality of a specific pane on/off by adding removing 'slide open' trigger
+	 *
+	 * @callers  open(), close()
+	 * @param String  pane  The pane to enable/disable, 'north', 'south', etc.
+	 * @param Boolean  enable  Enable or Disable sliding?
+	 */
+	var bindStartSlidingEvent = function (pane, enable) {
+		var 
+			o		= options[pane]
+		,	$R		= $Rs[pane]
+		,	trigger	= o.slideTrigger_open
+		;
+		if (!$R || !o.slidable) return;
+		// make sure we have a valid event
+		if (trigger != "click" && trigger != "dblclick" && trigger != "mouseover") trigger = "click";
+		$R
+			// add or remove trigger event
+			[enable ? "bind" : "unbind"](trigger, slideOpen)
+			// set the appropriate cursor & title/tip
+			.css("cursor", (enable ? o.sliderCursor: "default"))
+			.attr("title", (enable ? o.sliderTip : ""))
+		;
+	};
+
+	/**
+	 * bindStopSlidingEvents
+	 *
+	 * Add or remove 'mouseout' events to 'slide close' when pane is 'sliding' open or closed
+	 * Also increases zIndex when pane is sliding open
+	 * See bindStartSlidingEvent for code to control 'slide open'
+	 *
+	 * @callers  slideOpen(), slideClosed()
+	 * @param String  pane  The pane to process, 'north', 'south', etc.
+	 * @param Boolean  isOpen  Is pane open or closed?
+	 */
+	var bindStopSlidingEvents = function (pane, enable) {
+		var 
+			o		= options[pane]
+		,	s		= state[pane]
+		,	trigger	= o.slideTrigger_close
+		,	action	= (enable ? "bind" : "unbind") // can't make 'unbind' work! - see disabled code below
+		,	$P		= $Ps[pane]
+		,	$R		= $Rs[pane]
+		;
+
+		s.isSliding = enable; // logic
+		clearTimer(pane, "closeSlider"); // just in case
+
+		// raise z-index when sliding
+		$P.css({ zIndex: (enable ? c.zIndex.sliding : c.zIndex.pane_normal) });
+		$R.css({ zIndex: (enable ? c.zIndex.sliding : c.zIndex.resizer_normal) });
+
+		// make sure we have a valid event
+		if (trigger != "click" && trigger != "mouseout") trigger = "mouseout";
+
+		// when trigger is 'mouseout', must cancel timer when mouse moves between 'pane' and 'resizer'
+		if (enable) { // BIND trigger events
+			$P.bind(trigger, slideClosed );
+			$R.bind(trigger, slideClosed );
+			if (trigger = "mouseout") {
+				$P.bind("mouseover", cancelMouseOut );
+				$R.bind("mouseover", cancelMouseOut );
+			}
+		}
+		else { // UNBIND trigger events
+			// TODO: why does unbind of a 'single function' not work reliably?
+			//$P[action](trigger, slideClosed );
+			$P.unbind(trigger);
+			$R.unbind(trigger);
+			if (trigger = "mouseout") {
+				//$P[action]("mouseover", cancelMouseOut );
+				$P.unbind("mouseover");
+				$R.unbind("mouseover");
+				clearTimer(pane, "closeSlider");
+			}
+		}
+
+		// SUBROUTINE for mouseout timer clearing
+		function cancelMouseOut (evt) {
+			clearTimer(pane, "closeSlider");
+			evt.stopPropagation();
+		}
+	};
+
+	var slideOpen = function () {
+		var pane = $(this).attr("resizer"); // attr added by initHandles
+		if (state[pane].isClosed) { // skip if already open!
+			bindStopSlidingEvents(pane, true); // pane is opening, so BIND trigger events to close it
+			open(pane, true); // true = slide - ie, called from here!
+		}
+	};
+
+	var slideClosed = function () {
+		var
+			$E = $(this)
+		,	pane = $E.attr("pane") || $E.attr("resizer")
+		,	o = options[pane]
+		,	s = state[pane]
+		;
+		if (s.isClosed || s.isResizing)
+			return; // skip if already closed OR in process of resizing
+		else if (o.slideTrigger_close == "click")
+			close_NOW(); // close immediately onClick
+		else // trigger = mouseout - use a delay
+			setTimer(pane, "closeSlider", close_NOW, 300); // .3 sec delay
+
+		// SUBROUTINE for timed close
+		function close_NOW () {
+			bindStopSlidingEvents(pane, false); // pane is being closed, so UNBIND trigger events
+			if (!s.isClosed) close(pane); // skip if already closed!
+		}
+	};
+
+
+	/**
+	 * sizePane
+	 *
+	 * @callers  initResizable.stop()
+	 * @param String  pane   The pane being resized - usually west or east, but potentially north or south
+	 * @param Integer  newSize  The new size for this pane - will be validated
+	 */
+	var sizePane = function (pane, size) {
+		// TODO: accept "auto" as size, and size-to-fit pane content
+		var 
+			edge	= c[pane].edge
+		,	dir		= c[pane].dir
+		,	o		= options[pane]
+		,	s		= state[pane]
+		,	$P		= $Ps[pane]
+		,	$R		= $Rs[pane]
+		;
+		// calculate 'current' min/max sizes
+		setPaneMinMaxSizes(pane); // update pane-state
+		// compare/update calculated min/max to user-options
+		s.minSize = max(s.minSize, o.minSize);
+		if (o.maxSize > 0) s.maxSize = min(s.maxSize, o.maxSize);
+		// validate passed size
+		size = max(size, s.minSize);
+		size = min(size, s.maxSize);
+		s.size = size; // update state
+
+		// move the resizer bar and resize the pane
+		$R.css( edge, size + cDims[edge] );
+		$P.css( c[pane].sizeType, max(1, cssSize(pane, size)) );
+
+		// resize all the adjacent panes, and adjust their toggler buttons
+		if (!s.isSliding) sizeMidPanes(dir=="horz" ? "all" : "center");
+		sizeHandles();
+		sizeContent(pane);
+		execUserCallback(pane, o.onresize_end || o.onresize);
+	};
+
+	/**
+	 * sizeMidPanes
+	 *
+	 * @callers  create(), open(), close(), onWindowResize()
+	 */
+	var sizeMidPanes = function (panes, overrideDims, onInit) {
+		if (!panes || panes == "all") panes = "east,west,center";
+
+		var d = getPaneDims();
+		if (overrideDims) $.extend( d, overrideDims );
+
+		$.each(panes.split(","), function() {
+			if (!$Ps[this]) return; // NO PANE - skip
+			var 
+				pane	= str(this)
+			,	o		= options[pane]
+			,	s		= state[pane]
+			,	$P		= $Ps[pane]
+			,	$R		= $Rs[pane]
+			,	hasRoom	= true
+			,	CSS		= {}
+			;
+
+			if (pane == "center") {
+				d = getPaneDims(); // REFRESH Dims because may have just 'unhidden' East or West pane after a 'resize'
+				CSS = $.extend( {}, d ); // COPY ALL of the paneDims
+				CSS.width  = max(1, cssW(pane, CSS.width));
+				CSS.height = max(1, cssH(pane, CSS.height));
+				hasRoom = (CSS.width > 1 && CSS.height > 1);
+				/*
+				 * Extra CSS for IE6 or IE7 in Quirks-mode - add 'width' to NORTH/SOUTH panes
+				 * Normally these panes have only 'left' & 'right' positions so pane auto-sizes
+				 */
+				if ($.browser.msie && (!$.boxModel || $.browser.version < 7)) {
+					if ($Ps.north) $Ps.north.css({ width: cssW($Ps.north, cDims.innerWidth) });
+					if ($Ps.south) $Ps.south.css({ width: cssW($Ps.south, cDims.innerWidth) });
+				}
+			}
+			else { // for east and west, set only the height
+				CSS.top = d.top;
+				CSS.bottom = d.bottom;
+				CSS.height = max(1, cssH(pane, d.height));
+				hasRoom = (CSS.height > 1);
+			}
+
+			if (hasRoom) {
+				$P.css(CSS);
+				if (s.noRoom) {
+					s.noRoom = false;
+					if (s.isHidden) return;
+					else show(pane, !s.isClosed);
+					/* OLD CODE - keep until sure line above works right!
+					if (!s.isClosed) $P.show(); // in case was previously hidden due to NOT hasRoom
+					if ($R) $R.show();
+					*/
+				}
+				if (!onInit) {
+					sizeContent(pane);
+					execUserCallback(pane, o.onresize_end || o.onresize);
+				}
+			}
+			else if (!s.noRoom) { // no room for pane, so just hide it (if not already)
+				s.noRoom = true; // update state
+				if (s.isHidden) return;
+				if (onInit) { // skip onhide callback and other logic onLoad
+					$P.hide();
+					if ($R) $R.hide();
+				}
+				else hide(pane);
+			}
+		});
+	};
+
+
+	var sizeContent = function (panes) {
+		if (!panes || panes == "all") panes = c.allPanes;
+
+		$.each(panes.split(","), function() {
+			if (!$Cs[this]) return; // NO CONTENT - skip
+			var 
+				pane	= str(this)
+			,	ignore	= options[pane].contentIgnoreSelector
+			,	$P		= $Ps[pane]
+			,	$C		= $Cs[pane]
+			,	e_C		= $C[0]		// DOM element
+			,	height	= cssH($P);	// init to pane.innerHeight
+			;
+			$P.children().each(function() {
+				if (this == e_C) return; // Content elem - skip
+				var $E = $(this);
+				if (!ignore || !$E.is(ignore))
+					height -= $E.outerHeight();
+			});
+			if (height > 0)
+				height = cssH($C, height);
+			if (height < 1)
+				$C.hide(); // no room for content!
+			else
+				$C.css({ height: height }).show();
+		});
+	};
+
+
+	/**
+	 * sizeHandles
+	 *
+	 * Called every time a pane is opened, closed, or resized to slide the togglers to 'center' and adjust their length if necessary
+	 *
+	 * @callers  initHandles(), open(), close(), resizeAll()
+	 */
+	var sizeHandles = function (panes, onInit) {
+		if (!panes || panes == "all") panes = c.borderPanes;
+
+		$.each(panes.split(","), function() {
+			var 
+				pane	= str(this)
+			,	o		= options[pane]
+			,	s		= state[pane]
+			,	$P		= $Ps[pane]
+			,	$R		= $Rs[pane]
+			,	$T		= $Ts[pane]
+			;
+			if (!$P || !$R || (!o.resizable && !o.closable)) return; // skip
+
+			var 
+				dir			= c[pane].dir
+			,	_state		= (s.isClosed ? "_closed" : "_open")
+			,	spacing		= o["spacing"+ _state]
+			,	togAlign	= o["togglerAlign"+ _state]
+			,	togLen		= o["togglerLength"+ _state]
+			,	paneLen
+			,	offset
+			,	CSS = {}
+			;
+			if (spacing == 0) {
+				$R.hide();
+				return;
+			}
+			else if (!s.noRoom && !s.isHidden) // skip if resizer was hidden for any reason
+				$R.show(); // in case was previously hidden
+
+			// Resizer Bar is ALWAYS same width/height of pane it is attached to
+			if (dir == "horz") { // north/south
+				paneLen = $P.outerWidth();
+				$R.css({
+					width:	max(1, cssW($R, paneLen)) // account for borders & padding
+				,	height:	max(1, cssH($R, spacing)) // ditto
+				,	left:	cssNum($P, "left")
+				});
+			}
+			else { // east/west
+				paneLen = $P.outerHeight();
+				$R.css({
+					height:	max(1, cssH($R, paneLen)) // account for borders & padding
+				,	width:	max(1, cssW($R, spacing)) // ditto
+				,	top:	cDims.top + getPaneSize("north", true)
+				//,	top:	cssNum($Ps["center"], "top")
+				});
+				
+			}
+
+			if ($T) {
+				if (togLen == 0 || (s.isSliding && o.hideTogglerOnSlide)) {
+					$T.hide(); // always HIDE the toggler when 'sliding'
+					return;
+				}
+				else
+					$T.show(); // in case was previously hidden
+
+				if (!(togLen > 0) || togLen == "100%" || togLen > paneLen) {
+					togLen = paneLen;
+					offset = 0;
+				}
+				else { // calculate 'offset' based on options.PANE.togglerAlign_open/closed
+					if (typeof togAlign == "string") {
+						switch (togAlign) {
+							case "top":
+							case "left":	offset = 0;
+											break;
+							case "bottom":
+							case "right":	offset = paneLen - togLen;
+											break;
+							case "middle":
+							case "center":
+							default:		offset = Math.floor((paneLen - togLen) / 2); // 'default' catches typos
+						}
+					}
+					else { // togAlign = number
+						var x = parseInt(togAlign); //
+						if (togAlign >= 0) offset = x;
+						else offset = paneLen - togLen + x; // NOTE: x is negative!
+					}
+				}
+
+				var
+					$TC_o = (o.togglerContent_open   ? $T.children(".content-open") : false)
+				,	$TC_c = (o.togglerContent_closed ? $T.children(".content-closed")   : false)
+				,	$TC   = (s.isClosed ? $TC_c : $TC_o)
+				;
+				if ($TC_o) $TC_o.css("display", s.isClosed ? "none" : "block");
+				if ($TC_c) $TC_c.css("display", s.isClosed ? "block" : "none");
+
+				if (dir == "horz") { // north/south
+					var width = cssW($T, togLen);
+					$T.css({
+						width:	max(0, width)  // account for borders & padding
+					,	height:	max(1, cssH($T, spacing)) // ditto
+					,	left:	offset // TODO: VERIFY that toggler  positions correctly for ALL values
+					});
+					if ($TC) // CENTER the toggler content SPAN
+						$TC.css("marginLeft", Math.floor((width-$TC.outerWidth())/2)); // could be negative
+				}
+				else { // east/west
+					var height = cssH($T, togLen);
+					$T.css({
+						height:	max(0, height)  // account for borders & padding
+					,	width:	max(1, cssW($T, spacing)) // ditto
+					,	top:	offset // POSITION the toggler
+					});
+					if ($TC) // CENTER the toggler content SPAN
+						$TC.css("marginTop", Math.floor((height-$TC.outerHeight())/2)); // could be negative
+				}
+
+
+			}
+
+			// DONE measuring and sizing this resizer/toggler, so can be 'hidden' now
+			if (onInit && o.initHidden) {
+				$R.hide();
+				if ($T) $T.hide();
+			}
+		});
+	};
+
+
+	/**
+	 * resizeAll
+	 *
+	 * @callers  window.onresize(), callbacks or custom code
+	 */
+	var resizeAll = function () {
+		var
+			oldW	= cDims.innerWidth
+		,	oldH	= cDims.innerHeight
+		;
+		cDims = state.container = getElemDims($Container); // UPDATE container dimensions
+
+		var
+			checkH	= (cDims.innerHeight < oldH)
+		,	checkW	= (cDims.innerWidth < oldW)
+		,	s, dir
+		;
+
+		if (checkH || checkW)
+			// NOTE special order for sizing: S-N-E-W
+			$.each(["south","north","east","west"], function(i,pane) {
+				s = state[pane];
+				dir = c[pane].dir;
+				if (!s.isClosed && ((checkH && dir=="horz") || (checkW && dir=="vert"))) {
+					setPaneMinMaxSizes(pane); // update pane-state
+					// shrink pane if 'too big' to fit
+					if (s.size > s.maxSize)
+						sizePane(pane, s.maxSize);
+				}
+			});
+
+		sizeMidPanes("all");
+		sizeHandles("all"); // reposition the toggler elements
+	};
+
+
+	/**
+	 * keyDown
+	 *
+	 * Capture keys when enableCursorHotkey - toggle pane if hotkey pressed
+	 *
+	 * @callers  document.keydown()
+	 */
+	function keyDown (evt) {
+		if (!evt) return true;
+		var code = evt.keyCode;
+		if (code < 33) return true; // ignore special keys: ENTER, TAB, etc
+
+		var
+			PANE = {
+				38: "north" // Up Cursor
+			,	40: "south" // Down Cursor
+			,	37: "west"  // Left Cursor
+			,	39: "east"  // Right Cursor
+			}
+		,	isCursorKey = (code >= 37 && code <= 40)
+		,	ALT = evt.altKey // no worky!
+		,	SHIFT = evt.shiftKey
+		,	CTRL = evt.ctrlKey
+		,	pane = false
+		,	s, o, k, m, el
+		;
+
+		if (!CTRL && !SHIFT)
+			return true; // no modifier key - abort
+		else if (isCursorKey && options[PANE[code]].enableCursorHotkey) // valid cursor-hotkey
+			pane = PANE[code];
+		else // check to see if this matches a custom-hotkey
+			$.each(c.borderPanes.split(","), function(i,p) { // loop each pane to check its hotkey
+				o = options[p];
+				k = o.customHotkey;
+				m = o.customHotkeyModifier; // if missing or invalid, treated as "CTRL+SHIFT"
+				if ((SHIFT && m=="SHIFT") || (CTRL && m=="CTRL") || (CTRL && SHIFT)) { // Modifier matches
+					if (k && code == (isNaN(k) || k <= 9 ? k.toUpperCase().charCodeAt(0) : k)) { // Key matches
+						pane = p;
+						return false; // BREAK
+					}
+				}
+			});
+
+		if (!pane) return true; // no hotkey - abort
+
+		// validate pane
+		o = options[pane]; // get pane options
+		s = state[pane]; // get pane options
+		if (!o.enableCursorHotkey || s.isHidden || !$Ps[pane]) return true;
+
+		// see if user is in a 'form field' because may be 'selecting text'!
+		el = evt.target || evt.srcElement;
+		if (el && SHIFT && isCursorKey && (el.tagName=="TEXTAREA" || (el.tagName=="INPUT" && (code==37 || code==39))))
+			return true; // allow text-selection
+
+		// SYNTAX NOTES
+		// use "returnValue=false" to abort keystroke but NOT abort function - can run another command afterwards
+		// use "return false" to abort keystroke AND abort function
+		toggle(pane);
+		evt.stopPropagation();
+		evt.returnValue = false; // CANCEL key
+		return false;
+	};
+
+
+/*
+ * ###########################
+ *     UTILITY METHODS
+ *   called externally only
+ * ###########################
+ */
+
+	function allowOverflow (elem) {
+		if (this && this.tagName) elem = this; // BOUND to element
+		var $P;
+		if (typeof elem=="string")
+			$P = $Ps[elem];
+		else {
+			if ($(elem).attr("pane")) $P = $(elem);
+			else $P = $(elem).parents("div[pane]:first");
+		}
+		if (!$P.length) return; // INVALID
+
+		var
+			pane	= $P.attr("pane")
+		,	s		= state[pane]
+		;
+
+		// if pane is already raised, then reset it before doing it again!
+		// this would happen if allowOverflow is attached to BOTH the pane and an element 
+		if (s.cssSaved)
+			resetOverflow(pane); // reset previous CSS before continuing
+
+		// if pane is raised by sliding or resizing, or it's closed, then abort
+		if (s.isSliding || s.isResizing || s.isClosed) {
+			s.cssSaved = false;
+			return;
+		}
+
+		var
+			newCSS	= { zIndex: (c.zIndex.pane_normal + 1) }
+		,	css	= {}
+		,	of		= $P.css("overflow")
+		,	ofX		= $P.css("overflowX")
+		,	ofY		= $P.css("overflowY")
+		;
+		// determine which, if any, overflow settings need to be changed
+		if (of != "visible") {
+			css.overflow = of;
+			newCSS.overflow = "visible";
+		}
+		if (ofX && ofX != "visible" && ofX != "auto") {
+			css.overflowX = ofX;
+			newCSS.overflowX = "visible";
+		}
+		if (ofY && ofY != "visible" && ofY != "auto") {
+			css.overflowY = ofX;
+			newCSS.overflowY = "visible";
+		}
+
+		// save the current overflow settings - even if blank!
+		s.cssSaved = css;
+
+		// apply new CSS to raise zIndex and, if necessary, make overflow 'visible'
+		$P.css( newCSS );
+
+		// make sure the zIndex of all other panes is normal
+		$.each(c.allPanes.split(","), function(i, p) {
+			if (p != pane) resetOverflow(p);
+		});
+
+	};
+
+	function resetOverflow (elem) {
+		if (this && this.tagName) elem = this; // BOUND to element
+		var $P;
+		if (typeof elem=="string")
+			$P = $Ps[elem];
+		else {
+			if ($(elem).hasClass("ui-layout-pane")) $P = $(elem);
+			else $P = $(elem).parents("div[pane]:first");
+		}
+		if (!$P.length) return; // INVALID
+
+		var
+			pane	= $P.attr("pane")
+		,	s		= state[pane]
+		,	CSS		= s.cssSaved || {}
+		;
+		// reset the zIndex
+		if (!s.isSliding && !s.isResizing)
+			$P.css("zIndex", c.zIndex.pane_normal);
+
+		// reset Overflow - if necessary
+		$P.css( CSS );
+
+		// clear var
+		s.cssSaved = false;
+	};
+
+
+	/**
+	* getBtn
+	*
+	* Helper function to validate params received by addButton utilities
+	*
+	* @param String   selector 	jQuery selector for button, eg: ".ui-layout-north .toggle-button"
+	* @param String   pane 		Name of the pane the button is for: 'north', 'south', etc.
+	* @returns  If both params valid, the element matching 'selector' in a jQuery wrapper - otherwise 'false'
+	*/
+	function getBtn(selector, pane, action) {
+		var
+			$E = $(selector)
+		,	err = "Error Adding Button \n\nInvalid "
+		;
+		if (!$E.length) // element not found
+			alert(err+"selector: "+ selector);
+		else if (c.borderPanes.indexOf(pane) == -1) // invalid 'pane' sepecified
+			alert(err+"pane: "+ pane);
+		else { // VALID
+			var btn = options[pane].buttonClass +"-"+ action;
+			$E.addClass( btn +" "+ btn +"-"+ pane );
+			return $E;
+		}
+		return false;  // INVALID
+	};
+
+
+	/**
+	* addToggleBtn
+	*
+	* Add a custom Toggler button for a pane
+	*
+	* @param String   selector 	jQuery selector for button, eg: ".ui-layout-north .toggle-button"
+	* @param String   pane 		Name of the pane the button is for: 'north', 'south', etc.
+	*/
+	function addToggleBtn (selector, pane) {
+		var $E = getBtn(selector, pane, "toggle");
+		if ($E)
+			$E
+				.attr("title", state[pane].isClosed ? "Open" : "Close")
+				.click(function (evt) {
+					toggle(pane);
+					evt.stopPropagation();
+				})
+			;
+	};
+
+	/**
+	* addOpenBtn
+	*
+	* Add a custom Open button for a pane
+	*
+	* @param String   selector 	jQuery selector for button, eg: ".ui-layout-north .open-button"
+	* @param String   pane 		Name of the pane the button is for: 'north', 'south', etc.
+	*/
+	function addOpenBtn (selector, pane) {
+		var $E = getBtn(selector, pane, "open");
+		if ($E)
+			$E
+				.attr("title", "Open")
+				.click(function (evt) {
+					open(pane);
+					evt.stopPropagation();
+				})
+			;
+	};
+
+	/**
+	* addCloseBtn
+	*
+	* Add a custom Close button for a pane
+	*
+	* @param String   selector 	jQuery selector for button, eg: ".ui-layout-north .close-button"
+	* @param String   pane 		Name of the pane the button is for: 'north', 'south', etc.
+	*/
+	function addCloseBtn (selector, pane) {
+		var $E = getBtn(selector, pane, "close");
+		if ($E)
+			$E
+				.attr("title", "Close")
+				.click(function (evt) {
+					close(pane);
+					evt.stopPropagation();
+				})
+			;
+	};
+
+	/**
+	* addPinBtn
+	*
+	* Add a custom Pin button for a pane
+	*
+	* Four classes are added to the element, based on the paneClass for the associated pane...
+	* Assuming the default paneClass and the pin is 'up', these classes are added for a west-pane pin:
+	*  - ui-layout-pane-pin
+	*  - ui-layout-pane-west-pin
+	*  - ui-layout-pane-pin-up
+	*  - ui-layout-pane-west-pin-up
+	*
+	* @param String   selector 	jQuery selector for button, eg: ".ui-layout-north .ui-layout-pin"
+	* @param String   pane 		Name of the pane the pin is for: 'north', 'south', etc.
+	*/
+	function addPinBtn (selector, pane) {
+		var $E = getBtn(selector, pane, "pin");
+		if ($E) {
+			var s = state[pane];
+			$E.click(function (evt) {
+				setPinState($(this), pane, (s.isSliding || s.isClosed));
+				if (s.isSliding || s.isClosed) open( pane ); // change from sliding to open
+				else close( pane ); // slide-closed
+				evt.stopPropagation();
+			});
+			// add up/down pin attributes and classes
+			setPinState ($E, pane, (!s.isClosed && !s.isSliding));
+			// add this pin to the pane data so we can 'sync it' automatically
+			// PANE.pins key is an array so we can store multiple pins for each pane
+			c[pane].pins.push( selector ); // just save the selector string
+		}
+	};
+
+	/**
+	* syncPinBtns
+	*
+	* INTERNAL function to sync 'pin buttons' when pane is opened or closed
+	* Unpinned means the pane is 'sliding' - ie, over-top of the adjacent panes
+	*
+	* @callers  open(), close()
+	* @params  pane   These are the params returned to callbacks by layout()
+	* @params  doPin  True means set the pin 'down', False means 'up'
+	*/
+	function syncPinBtns (pane, doPin) {
+		$.each(c[pane].pins, function (i, selector) {
+			setPinState($(selector), pane, doPin);
+		});
+	};
+
+	/**
+	* setPinState
+	*
+	* Change the class of the pin button to make it look 'up' or 'down'
+	*
+	* @callers  addPinBtn(), syncPinBtns()
+	* @param Element  $Pin		The pin-span element in a jQuery wrapper
+	* @param Boolean  doPin		True = set the pin 'down', False = set it 'up'
+	* @param String   pinClass	The root classname for pins - will add '-up' or '-down' suffix
+	*/
+	function setPinState ($Pin, pane, doPin) {
+		var updown = $Pin.attr("pin");
+		if (updown && doPin == (updown=="down")) return; // already in correct state
+		var
+			root	= options[pane].buttonClass
+		,	class1	= root +"-pin"
+		,	class2	= class1 +"-"+ pane
+		,	UP1		= class1 + "-up"
+		,	UP2		= class2 + "-up"
+		,	DN1		= class1 + "-down"
+		,	DN2		= class2 + "-down"
+		;
+		$Pin
+			.attr("pin", doPin ? "down" : "up") // logic
+			.attr("title", doPin ? "Un-Pin" : "Pin")
+			.removeClass( doPin ? UP1 : DN1 ) 
+			.removeClass( doPin ? UP2 : DN2 ) 
+			.addClass( doPin ? DN1 : UP1 ) 
+			.addClass( doPin ? DN2 : UP2 ) 
+		;
+	};
+
+
+/*
+ * ###########################
+ * CREATE/RETURN BORDER-LAYOUT
+ * ###########################
+ */
+
+	// init global vars
+	var 
+		$Container = $(this).css({ overflow: "hidden" }) // Container elem
+	,	$Ps		= {} // Panes x4	- set in initPanes()
+	,	$Cs		= {} // Content x4	- set in initPanes()
+	,	$Rs		= {} // Resizers x4	- set in initHandles()
+	,	$Ts		= {} // Togglers x4	- set in initHandles()
+	//	object aliases
+	,	c		= config // alias for config hash
+	,	cDims	= state.container // alias for easy access to 'container dimensions'
+	;
+
+	// create the border layout NOW
+	create();
+
+	// return object pointers to expose data & option Properties, and primary action Methods
+	return {
+		options:		options			// property - options hash
+	,	state:			state			// property - dimensions hash
+	,	panes:			$Ps				// property - object pointers for ALL panes: panes.north, panes.center
+	,	toggle:			toggle			// method - pass a 'pane' ("north", "west", etc)
+	,	open:			open			// method - ditto
+	,	close:			close			// method - ditto
+	,	hide:			hide			// method - ditto
+	,	show:			show			// method - ditto
+	,	resizeContent:	sizeContent		// method - ditto
+	,	sizePane:		sizePane		// method - pass a 'pane' AND a 'size' in pixels
+	,	resizeAll:		resizeAll		// method - no parameters
+	,	addToggleBtn:	addToggleBtn	// utility - pass element selector and 'pane'
+	,	addOpenBtn:		addOpenBtn		// utility - ditto
+	,	addCloseBtn:	addCloseBtn		// utility - ditto
+	,	addPinBtn:		addPinBtn		// utility - ditto
+	,	allowOverflow:	allowOverflow	// utility - pass calling element
+	,	resetOverflow:	resetOverflow	// utility - ditto
+	,	cssWidth:		cssW
+	,	cssHeight:		cssH
+	};
+
+}
+})( jQuery );

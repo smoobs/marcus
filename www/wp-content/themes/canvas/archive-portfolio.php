@@ -9,27 +9,27 @@
  * @subpackage Template
  */
 
- global $woo_options; 
+ global $woo_options;
  get_header();
 ?>
     <!-- #content Starts -->
 	<?php woo_content_before(); ?>
     <div id="content" class="col-full">
-    
-    	<div id="main-sidebar-container">    
+
+    	<div id="main-sidebar-container">
 
             <!-- #main Starts -->
             <?php woo_main_before(); ?>
-            <div id="main"> 
+            <section id="main">
 <?php
 	get_template_part( 'loop', 'portfolio' );
 ?>
-            </div><!-- /#main -->
+            </section><!-- /#main -->
             <?php woo_main_after(); ?>
-    
+
             <?php get_sidebar(); ?>
 
-		</div><!-- /#main-sidebar-container -->         
+		</div><!-- /#main-sidebar-container -->
 
 		<?php get_sidebar( 'alt' ); ?>
 
