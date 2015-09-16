@@ -1,3 +1,0 @@
-[29-Nov-2012 13:25:18] PHP Fatal error:  Call to undefined function  get_header() in /home/marcussp/public_html/wp-content/themes/canvas/index.php on line 14
-[12-Sep-2015 19:04:10 UTC] PHP Fatal error:  Call to undefined function __() in /home/marcussp/public_html/wp-content/themes/canvas/comments.php on line 14
-[14-Sep-2015 02:10:52 UTC] PHP Fatal error:  Call to undefined function __() in /home/marcussp/public_html/wp-content/themes/canvas/comments.php on line 14
